@@ -26,7 +26,7 @@ npm test          # teste pentru logica coșului și prețuri (Node, fără emul
   - `(tabs)/` – Meniu, Comenzi (istoric + „Comandă din nou”), Fidelitate (provizoriu până la pasul 5), Cont;
   - `produs/[id]` – produs cu variante, preferințe, observații și cantitate;
   - `cos` – coș și finalizarea comenzii (livrare/ridicare, punct de lucru, adresă, telefon, plată numerar);
-  - `comanda/[id]` – statusul comenzii (se actualizează la 30 s până vin notificările push);
+  - `comanda/[id]` – statusul comenzii, cu ora fiecărui pas (se reîncarcă la 30 s și la fiecare notificare);
   - `autentificare`, `locatie` – ferestre modale;
 - `src/api/` – clientul HTTP, tipurile și hook-urile TanStack Query pentru `mlb-app-api`;
 - `src/store/` – coșul (Zustand, salvat pe telefon) și sesiunea (token în keychain prin expo-secure-store);
@@ -35,3 +35,8 @@ npm test          # teste pentru logica coșului și prețuri (Node, fără emul
 - `src/constants/theme.ts` – culori și fonturi din machetă.
 
 Prețurile afișate în coș sunt o estimare; totalul final îl calculează serverul.
+
+## Notificări push
+
+Aplicația cere permisiunea după prima comandă și înregistrează telefonul la `mlb-app-api` (`/push-tokens`); la ieșirea din cont îl șterge. Atingerea unei notificări deschide comanda.
+Expo Push are nevoie de ID-ul proiectului EAS: rulează o dată `npx eas init` (cu contul Expo al clientului), care îl scrie în `app.json`. Până atunci înregistrarea e sărită fără erori. Pe web și în simulator nu există notificări push.

@@ -189,7 +189,7 @@ class Orders_Controller {
 		$order->update_meta_data( '_mlb_source', 'app' );
 		$order->update_meta_data( '_mlb_location_id', (string) $location['id'] );
 		$order->update_meta_data( '_mlb_fulfillment', $fulfillment );
-		$order->update_meta_data( Statuses::META_KEY, Statuses::RECEIVED );
+		Statuses::record( $order, Statuses::RECEIVED );
 		if ( '' !== $client_order_id ) {
 			$order->update_meta_data( '_mlb_client_order_id', $client_order_id );
 		}

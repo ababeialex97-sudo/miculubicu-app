@@ -1,0 +1,26 @@
+.mlb-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 16px; }
+.mlb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.mlb-card { background: #fff; border: 1px solid #c3c4c7; border-left-width: 6px; border-radius: 4px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.mlb-card p { margin: 0; }
+.mlb-status-received { border-left-color: #c8321f; }
+.mlb-status-confirmed, .mlb-status-preparing { border-left-color: #dba617; }
+.mlb-status-on_the_way, .mlb-status-ready_for_pickup { border-left-color: #2271b1; }
+.mlb-status-completed { border-left-color: #00a32a; }
+.mlb-status-cancelled { border-left-color: #8c8f94; opacity: .75; }
+.mlb-card-head { display: flex; gap: 8px; align-items: center; font-size: 16px; }
+.mlb-card-head .mlb-muted { margin-left: auto; }
+.mlb-muted { color: #646970; }
+.mlb-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; background: #f0f0f1; font-size: 12px; font-weight: 600; }
+.mlb-badge-test { background: #fcf0d0; color: #614a00; }
+.mlb-items { margin: 4px 0; padding-left: 18px; list-style: disc; }
+.mlb-items li { margin: 2px 0; }
+.mlb-items em { display: block; color: #50575e; }
+.mlb-note { background: #fcf9e8; padding: 6px 8px; border-radius: 3px; white-space: pre-line; }
+.mlb-total { display: flex; justify-content: space-between; font-size: 14px; }
+.mlb-gc { font-size: 12px; }
+.mlb-gc-ok { color: #00691c; }
+.mlb-gc-missing { color: #b32d2e; font-weight: 600; }
+.mlb-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.mlb-actions .button { min-height: 40px; }
+.mlb-actions .mlb-cancel { margin-left: auto; color: #b32d2e; border-color: #b32d2e; }
+.mlb-empty { font-size: 15px; color: #646970; }

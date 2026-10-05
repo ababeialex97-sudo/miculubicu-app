@@ -22,11 +22,17 @@ require_once __DIR__ . '/includes/class-statuses.php';
 require_once __DIR__ . '/includes/class-auth.php';
 require_once __DIR__ . '/includes/class-formatter.php';
 require_once __DIR__ . '/includes/class-product-fields.php';
+require_once __DIR__ . '/includes/class-push-messages.php';
+require_once __DIR__ . '/includes/class-push.php';
+require_once __DIR__ . '/includes/class-order-status.php';
 require_once __DIR__ . '/includes/rest/class-auth-controller.php';
 require_once __DIR__ . '/includes/rest/class-menu-controller.php';
 require_once __DIR__ . '/includes/rest/class-config-controller.php';
 require_once __DIR__ . '/includes/rest/class-orders-controller.php';
 require_once __DIR__ . '/includes/rest/class-push-controller.php';
+require_once __DIR__ . '/includes/rest/class-admin-orders-controller.php';
+require_once __DIR__ . '/includes/admin/class-orders-page.php';
+require_once __DIR__ . '/includes/admin/class-settings-page.php';
 require_once __DIR__ . '/includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( \MLB\AppApi\Plugin::class, 'activate' ) );

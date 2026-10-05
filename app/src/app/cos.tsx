@@ -10,6 +10,7 @@ import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { deliveryFeeBani, subtotalBani } from '@/lib/cart';
 import { randomId } from '@/lib/id';
+import { registerForPush } from '@/lib/push';
 import { resolveLocation } from '@/lib/location';
 import { formatBani, toBani } from '@/lib/money';
 import { useCart } from '@/store/cart';
@@ -85,6 +86,8 @@ export default function CartScreen() {
           cart.clear();
           clientOrderId.current = randomId();
           router.replace(`/comanda/${order.id}`);
+          // Right after ordering is when asking for notification permission makes sense.
+          void registerForPush({ ask: true });
         },
       },
     );
