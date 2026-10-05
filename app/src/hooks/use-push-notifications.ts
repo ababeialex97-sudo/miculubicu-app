@@ -1,11 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
 
 import { queryKeys } from '@/api/hooks';
-import { isLoyaltyNotification, orderIdFrom, registerForPush } from '@/lib/push';
+import { getNotifications, isLoyaltyNotification, orderIdFrom, registerForPush } from '@/lib/push';
 import { useSession } from '@/store/session';
 
 /**
@@ -23,11 +22,12 @@ export function usePushNotifications() {
   }, [token]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    const Notifications = getNotifications();
+    if (!Notifications) {
       return;
     }
 
-    const openOrder = (response: Notifications.NotificationResponse) => {
+    const openOrder = (response: NotificationsModule.NotificationResponse) => {
       if (isLoyaltyNotification(response.notification)) {
         router.push('/fidelitate');
         return;
