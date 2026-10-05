@@ -9,6 +9,7 @@ import type { Customer } from '@/api/types';
 import { AppText, Button, Centered, Field } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 import { unregisterForPush } from '@/lib/push';
+import { useCart } from '@/store/cart';
 import { useSession } from '@/store/session';
 
 export default function AccountScreen() {
@@ -51,6 +52,12 @@ function ProfileForm({ customer }: { customer: Customer }) {
     await unregisterForPush();
     signOut();
     queryClient.removeQueries({ queryKey: queryKeys.orders });
+    queryClient.removeQueries({ queryKey: queryKeys.loyalty });
+    queryClient.removeQueries({ queryKey: ['cart-preview'] });
+    // Reward codes belong to this account.
+    for (const code of useCart.getState().couponCodes) {
+      useCart.getState().removeCoupon(code);
+    }
   };
 
   return (

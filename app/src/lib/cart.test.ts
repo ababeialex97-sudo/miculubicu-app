@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addLine, deliveryFeeBani, itemCount, joinPreferences, setLineQuantity, subtotalBani, type CartLine } from './cart.ts';
+import { addLine, deliveryFeeBani, itemCount, joinPreferences, setLineQuantity, subtotalBani, type CartLine, addCouponCode, removeCouponCode, stampsLeftLabel } from './cart.ts';
 
 const mici = {
   productId: 1,
@@ -51,4 +51,19 @@ test('delivery is free from the threshold, never when the threshold is 0', () =>
 test('preferences join chips and the note', () => {
   assert.equal(joinPreferences(['Cu muștar', 'Bine făcuți'], ' muștarul separat '), 'Cu muștar, Bine făcuți, muștarul separat');
   assert.equal(joinPreferences([], '  '), '');
+});
+
+test('coupon codes are normalized, unique and at most two', () => {
+  let codes = addCouponCode([], '  BUNVENIT ');
+  assert.deepEqual(codes, ['bunvenit']);
+  assert.deepEqual(addCouponCode(codes, 'BunVenit'), ['bunvenit']);
+  codes = addCouponCode(addCouponCode(codes, 'bicu-abc123'), 'vara');
+  assert.deepEqual(codes, ['bunvenit', 'vara']);
+  assert.deepEqual(removeCouponCode(codes, 'VARA'), ['bunvenit']);
+  assert.deepEqual(addCouponCode([], '   '), []);
+});
+
+test('stamps left label', () => {
+  assert.equal(stampsLeftLabel(3, 4), 'Încă o comandă până la reducere');
+  assert.equal(stampsLeftLabel(0, 4), 'Încă 4 comenzi până la reducere');
 });

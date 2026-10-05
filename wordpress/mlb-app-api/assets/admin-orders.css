@@ -17,6 +17,7 @@
 .mlb-items em { display: block; color: #50575e; }
 .mlb-note { background: #fcf9e8; padding: 6px 8px; border-radius: 3px; white-space: pre-line; }
 .mlb-total { display: flex; justify-content: space-between; font-size: 14px; }
+.mlb-discount { display: flex; justify-content: space-between; margin: 0; font-size: 13px; color: #8a6d00; }
 .mlb-gc { font-size: 12px; }
 .mlb-gc-ok { color: #00691c; }
 .mlb-gc-missing { color: #b32d2e; font-weight: 600; }

@@ -9,6 +9,7 @@
 namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Auth;
+use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Settings;
 use MLB\AppApi\Statuses;
@@ -114,33 +115,42 @@ class Orders_Controller {
 
 		$location = Settings::get_location( (string) $request['location_id'] );
 		if ( ! $location ) {
-			return $this->error( 'mlb_invalid_location', 'Punctul de lucru ales nu există.' );
+			return self::error( 'mlb_invalid_location', 'Punctul de lucru ales nu există.' );
 		}
 
 		$fulfillment = (string) $request['fulfillment'];
 		$method      = 'delivery' === $fulfillment ? Settings::get_delivery_method() : Settings::get_pickup_method();
 		if ( ! $method || empty( $location[ $fulfillment ] ) ) {
 			$message = 'delivery' === $fulfillment ? 'Livrarea nu este disponibilă pentru acest punct de lucru.' : 'Ridicarea nu este disponibilă pentru acest punct de lucru.';
-			return $this->error( 'mlb_fulfillment_unavailable', $message );
+			return self::error( 'mlb_fulfillment_unavailable', $message );
 		}
 
 		$address = (array) $request['address'];
 		if ( 'delivery' === $fulfillment && ( '' === trim( (string) ( $address['address_1'] ?? '' ) ) || '' === trim( (string) ( $address['city'] ?? '' ) ) ) ) {
-			return $this->error( 'mlb_address_required', 'Adresa de livrare este obligatorie.' );
+			return self::error( 'mlb_address_required', 'Adresa de livrare este obligatorie.' );
 		}
 
 		$gateways = WC()->payment_gateways()->payment_gateways();
 		$gateway  = $gateways[ (string) $request['payment_method'] ] ?? null;
 		if ( ! $gateway || 'yes' !== $gateway->enabled ) {
-			return $this->error( 'mlb_payment_unavailable', 'Metoda de plată nu este disponibilă.' );
+			return self::error( 'mlb_payment_unavailable', 'Metoda de plată nu este disponibilă.' );
 		}
 
-		$lines = $this->resolve_lines( (array) $request['items'] );
+		$lines = self::resolve_lines( (array) $request['items'] );
 		if ( is_wp_error( $lines ) ) {
 			return $lines;
 		}
 
-		$customer = new \WC_Customer( $customer_id );
+		// Checked before the order exists, so a wrong code never leaves a half-made order behind.
+		$customer     = new \WC_Customer( $customer_id );
+		$coupon_codes = Coupons::normalize_codes( $request['coupon_codes'] );
+		if ( $coupon_codes ) {
+			$preview = Coupons::preview( $lines, $coupon_codes, $customer );
+			if ( is_wp_error( $preview ) ) {
+				return $preview;
+			}
+		}
+
 		$order    = wc_create_order(
 			array(
 				'customer_id' => $customer_id,
@@ -148,7 +158,7 @@ class Orders_Controller {
 			)
 		);
 		if ( is_wp_error( $order ) ) {
-			return $this->error( 'mlb_order_failed', 'Comanda nu a putut fi creată. Încearcă din nou.', 500 );
+			return self::error( 'mlb_order_failed', 'Comanda nu a putut fi creată. Încearcă din nou.', 500 );
 		}
 
 		foreach ( $lines as $line ) {
@@ -196,7 +206,18 @@ class Orders_Controller {
 
 		// Item totals first, so the free delivery threshold can look at the subtotal.
 		$order->calculate_totals();
-		$order->add_item( $this->shipping_item( $method, $fulfillment, $location, (float) $order->get_subtotal() ) );
+		$order->save();
+
+		// Coupons become order discounts; the GrandChef plugin's "Spread discount" puts them on the products.
+		foreach ( $coupon_codes as $code ) {
+			$applied = $order->apply_coupon( $code );
+			if ( is_wp_error( $applied ) ) {
+				$order->delete( true );
+				return self::error( 'mlb_coupon_invalid', wp_strip_all_tags( $applied->get_error_message() ) );
+			}
+		}
+
+		$order->add_item( $this->shipping_item( $method, self::delivery_cost_for( $fulfillment, $location, (float) $order->get_subtotal() ) ) );
 		$order->calculate_totals();
 		$order->save();
 
@@ -217,9 +238,9 @@ class Orders_Controller {
 	 * @param array<int, mixed> $items
 	 * @return array<int, array{product: \WC_Product, quantity: int, preferences: string}>|\WP_Error
 	 */
-	private function resolve_lines( array $items ) {
+	public static function resolve_lines( array $items ) {
 		if ( empty( $items ) ) {
-			return $this->error( 'mlb_empty_cart', 'Coșul este gol.' );
+			return self::error( 'mlb_empty_cart', 'Coșul este gol.' );
 		}
 
 		$lines = array();
@@ -234,12 +255,12 @@ class Orders_Controller {
 					? $product instanceof \WC_Product_Variation && $product->get_parent_id() === $product_id
 					: ! $product instanceof \WC_Product_Variable && ! $product instanceof \WC_Product_Variation );
 			if ( ! $valid ) {
-				return $this->error( 'mlb_invalid_product', 'Un produs din coș nu mai este disponibil.' );
+				return self::error( 'mlb_invalid_product', 'Un produs din coș nu mai este disponibil.' );
 			}
 
 			if ( ! $product->is_purchasable() || ! $product->is_in_stock() ) {
 				/* translators: %s: product name */
-				return $this->error( 'mlb_product_unavailable', sprintf( 'Produsul „%s” nu mai este disponibil.', $product->get_name() ) );
+				return self::error( 'mlb_product_unavailable', sprintf( 'Produsul „%s” nu mai este disponibil.', $product->get_name() ) );
 			}
 
 			$lines[] = array(
@@ -253,19 +274,28 @@ class Orders_Controller {
 	}
 
 	/**
-	 * Uses the zone's own method title and ID: the GrandChef plugin maps delivery types by title.
-	 * Free delivery keeps the delivery (flat_rate) method with a zero cost; the free_shipping
-	 * method is mapped to pickup in GrandChef.
+	 * Delivery fee for a subtotal (before discounts): zero above the location's free delivery threshold.
 	 *
 	 * @param array<string, mixed> $location
 	 */
-	private function shipping_item( \WC_Shipping_Method $method, string $fulfillment, array $location, float $subtotal ): \WC_Order_Item_Shipping {
-		$cost = 0.0;
-		if ( 'delivery' === $fulfillment ) {
-			$threshold = Settings::get_free_delivery_threshold( $location );
-			$cost      = ( $threshold > 0 && $subtotal >= $threshold ) ? 0.0 : Settings::get_delivery_fee( $location );
-		}
+	public static function delivery_cost( array $location, float $subtotal ): float {
+		$threshold = Settings::get_free_delivery_threshold( $location );
+		return ( $threshold > 0 && $subtotal >= $threshold ) ? 0.0 : Settings::get_delivery_fee( $location );
+	}
 
+	/**
+	 * @param array<string, mixed> $location
+	 */
+	private static function delivery_cost_for( string $fulfillment, array $location, float $subtotal ): float {
+		return 'delivery' === $fulfillment ? self::delivery_cost( $location, $subtotal ) : 0.0;
+	}
+
+	/**
+	 * Uses the zone's own method title and ID: the GrandChef plugin maps delivery types by title.
+	 * Free delivery keeps the delivery (flat_rate) method with a zero cost; the free_shipping
+	 * method is mapped to pickup in GrandChef.
+	 */
+	private function shipping_item( \WC_Shipping_Method $method, float $cost ): \WC_Order_Item_Shipping {
 		$item = new \WC_Order_Item_Shipping();
 		$item->set_method_title( $method->get_title() );
 		$item->set_method_id( $method->id );
@@ -300,8 +330,60 @@ class Orders_Controller {
 		return $orders[0] ?? null;
 	}
 
-	private function error( string $code, string $message, int $status = 400 ): \WP_Error {
+	private static function error( string $code, string $message, int $status = 400 ): \WP_Error {
 		return new \WP_Error( $code, $message, array( 'status' => $status ) );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	public static function items_schema(): array {
+		return array(
+			'type'     => 'array',
+			'required' => true,
+			'minItems' => 1,
+			'maxItems' => self::MAX_ITEMS,
+			'items'    => array(
+				'type'       => 'object',
+				'properties' => array(
+					'product_id'   => array(
+						'type'     => 'integer',
+						'required' => true,
+					),
+					'variation_id' => array(
+						'type'    => 'integer',
+						'default' => 0,
+					),
+					'quantity'     => array(
+						'type'     => 'integer',
+						'required' => true,
+						'minimum'  => 1,
+						'maximum'  => self::MAX_QUANTITY,
+					),
+					'preferences'  => array(
+						'type'      => 'string',
+						'maxLength' => 200,
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * A promo code plus a loyalty reward at most.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function coupon_codes_schema(): array {
+		return array(
+			'type'     => 'array',
+			'default'  => array(),
+			'maxItems' => 2,
+			'items'    => array(
+				'type'      => 'string',
+				'maxLength' => 50,
+			),
+		);
 	}
 
 	/**
@@ -309,35 +391,8 @@ class Orders_Controller {
 	 */
 	private function create_args(): array {
 		return array(
-			'items'           => array(
-				'type'     => 'array',
-				'required' => true,
-				'minItems' => 1,
-				'maxItems' => self::MAX_ITEMS,
-				'items'    => array(
-					'type'       => 'object',
-					'properties' => array(
-						'product_id'   => array(
-							'type'     => 'integer',
-							'required' => true,
-						),
-						'variation_id' => array(
-							'type'    => 'integer',
-							'default' => 0,
-						),
-						'quantity'     => array(
-							'type'     => 'integer',
-							'required' => true,
-							'minimum'  => 1,
-							'maximum'  => self::MAX_QUANTITY,
-						),
-						'preferences'  => array(
-							'type'      => 'string',
-							'maxLength' => 200,
-						),
-					),
-				),
-			),
+			'items'           => self::items_schema(),
+			'coupon_codes'    => self::coupon_codes_schema(),
 			'fulfillment'     => array(
 				'type'     => 'string',
 				'enum'     => array( 'delivery', 'pickup' ),

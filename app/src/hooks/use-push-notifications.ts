@@ -5,12 +5,12 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { queryKeys } from '@/api/hooks';
-import { orderIdFrom, registerForPush } from '@/lib/push';
+import { isLoyaltyNotification, orderIdFrom, registerForPush } from '@/lib/push';
 import { useSession } from '@/store/session';
 
 /**
- * Keeps the device registered while logged in, refreshes order data when a status
- * notification arrives, and opens the order when the customer taps one.
+ * Keeps the device registered while logged in, refreshes order or loyalty data when a
+ * notification arrives, and opens the order (or the loyalty card) when the customer taps one.
  */
 export function usePushNotifications() {
   const queryClient = useQueryClient();
@@ -28,6 +28,10 @@ export function usePushNotifications() {
     }
 
     const openOrder = (response: Notifications.NotificationResponse) => {
+      if (isLoyaltyNotification(response.notification)) {
+        router.push('/fidelitate');
+        return;
+      }
       const orderId = orderIdFrom(response.notification);
       if (orderId) {
         router.push(`/comanda/${orderId}`);
@@ -41,9 +45,15 @@ export function usePushNotifications() {
     }
 
     const received = Notifications.addNotificationReceivedListener((notification) => {
+      if (isLoyaltyNotification(notification)) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.loyalty });
+        return;
+      }
       const orderId = orderIdFrom(notification);
       void queryClient.invalidateQueries({ queryKey: orderId ? queryKeys.order(orderId) : queryKeys.orders });
       void queryClient.invalidateQueries({ queryKey: queryKeys.orders, exact: true });
+      // A completed order adds a stamp.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.loyalty });
     });
     const tapped = Notifications.addNotificationResponseReceivedListener(openOrder);
 

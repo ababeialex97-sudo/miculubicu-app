@@ -122,6 +122,7 @@ export type Order = {
   subtotal: string;
   shipping_total: string;
   discount_total: string;
+  coupon_codes: string[];
   total: string;
   currency: string;
   payment_method: string;
@@ -138,10 +139,48 @@ export type NewOrder = {
   phone: string;
   note: string;
   payment_method: string;
-  items: {
-    product_id: number;
-    variation_id?: number;
-    quantity: number;
-    preferences?: string;
-  }[];
+  items: NewOrderItem[];
+  coupon_codes?: string[];
+};
+
+export type NewOrderItem = {
+  product_id: number;
+  variation_id?: number;
+  quantity: number;
+  preferences?: string;
+};
+
+export type Coupon = {
+  code: string;
+  description: string;
+  discount_type: 'percent' | 'fixed';
+  amount: string;
+  amount_label: string;
+  minimum_amount: string;
+  first_order_only: boolean;
+  loyalty_reward: boolean;
+  expires_at: string | null;
+};
+
+export type Loyalty = {
+  enabled: boolean;
+  stamps: number;
+  required: number;
+  reward_label: string;
+  coupons: Coupon[];
+};
+
+export type CartPreviewRequest = {
+  items: NewOrderItem[];
+  coupon_codes: string[];
+  fulfillment: Fulfillment;
+  location_id: string;
+};
+
+export type CartPreview = {
+  subtotal: string;
+  discount: string;
+  shipping: string;
+  total: string;
+  coupons: (Coupon & { discount: string })[];
 };

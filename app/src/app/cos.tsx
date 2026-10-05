@@ -1,14 +1,15 @@
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useConfig, useCreateOrder } from '@/api/hooks';
+import { previewCart, useCartPreview, useConfig, useCreateOrder } from '@/api/hooks';
+import type { CartPreviewRequest } from '@/api/types';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
-import { deliveryFeeBani, subtotalBani } from '@/lib/cart';
+import { addCouponCode, deliveryFeeBani, orderItems, subtotalBani } from '@/lib/cart';
 import { randomId } from '@/lib/id';
 import { registerForPush } from '@/lib/push';
 import { resolveLocation } from '@/lib/location';
@@ -33,6 +34,17 @@ export default function CartScreen() {
   const paymentMethod = config.data?.payment_methods[0];
   const isDelivery = cart.fulfillment === 'delivery';
 
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const previewRequest = useMemo<CartPreviewRequest>(
+    () => ({ items: orderItems(cart.lines), coupon_codes: cart.couponCodes, fulfillment: cart.fulfillment, location_id: location?.id ?? '' }),
+    [cart.lines, cart.couponCodes, cart.fulfillment, location?.id],
+  );
+  const preview = useCartPreview(customer ? previewRequest : null);
+  // A code that stopped applying (e.g. the cart dropped under its minimum) blocks the order until removed.
+  const couponProblem = cart.couponCodes.length > 0 && preview.isError ? preview.error.message : null;
+
   if (cart.lines.length === 0) {
     return (
       <Centered>
@@ -46,7 +58,32 @@ export default function CartScreen() {
   const subtotal = subtotalBani(cart.lines);
   const threshold = toBani(location?.free_delivery_threshold ?? 0);
   const shipping = isDelivery ? deliveryFeeBani(subtotal, toBani(location?.delivery_fee ?? 0), threshold) : 0;
-  const total = subtotal + shipping;
+  const hasDiscount = cart.couponCodes.length > 0 && preview.data !== undefined && !preview.isError;
+  const discount = hasDiscount ? toBani(preview.data!.discount) : 0;
+  const total = Math.max(0, subtotal - discount) + shipping;
+
+  const applyCode = async () => {
+    if (!customer) {
+      router.push('/autentificare');
+      return;
+    }
+    const codes = addCouponCode(cart.couponCodes, codeInput);
+    if (codes === cart.couponCodes) {
+      setCodeInput('');
+      return;
+    }
+    setCheckingCode(true);
+    setCodeError(null);
+    try {
+      await previewCart({ ...previewRequest, coupon_codes: codes });
+      cart.addCoupon(codeInput);
+      setCodeInput('');
+    } catch (error) {
+      setCodeError(error instanceof Error ? error.message : 'Codul nu a putut fi verificat.');
+    } finally {
+      setCheckingCode(false);
+    }
+  };
 
   const submit = () => {
     if (!customer) {
@@ -60,6 +97,7 @@ export default function CartScreen() {
     if (isDelivery && !cart.address.city.trim()) found.city = 'Scrie localitatea.';
     if (phone.replace(/\D/g, '').length < 10) found.phone = 'Scrie un număr de telefon valid.';
     if (!paymentMethod) found.payment = 'Plata nu este disponibilă momentan.';
+    if (couponProblem) found.coupon = couponProblem;
     setErrors(found);
     if (Object.keys(found).length > 0 || !location || !paymentMethod) {
       return;
@@ -74,12 +112,8 @@ export default function CartScreen() {
         phone: phone.trim(),
         note: cart.note.trim(),
         payment_method: paymentMethod.id,
-        items: cart.lines.map((l) => ({
-          product_id: l.productId,
-          variation_id: l.variationId || undefined,
-          quantity: l.quantity,
-          preferences: l.preferences || undefined,
-        })),
+        items: orderItems(cart.lines),
+        coupon_codes: cart.couponCodes,
       },
       {
         onSuccess: (order) => {
@@ -174,6 +208,48 @@ export default function CartScreen() {
         <Field label="Observații pentru comandă" placeholder="De exemplu: sunați la interfon" value={cart.note} onChangeText={cart.setNote} multiline maxLength={300} />
 
         <View style={{ gap: 8 }}>
+          <View style={styles.codeRow}>
+            <TextInput
+              accessibilityLabel="Cod promoțional"
+              placeholder="Cod promoțional"
+              placeholderTextColor={colors.textMuted}
+              value={codeInput}
+              onChangeText={(text) => {
+                setCodeInput(text);
+                setCodeError(null);
+              }}
+              onSubmitEditing={() => void applyCode()}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              style={styles.codeInput}
+            />
+            <Pressable accessibilityRole="button" onPress={() => void applyCode()} disabled={checkingCode || !codeInput.trim()} style={[styles.codeButton, (checkingCode || !codeInput.trim()) && { opacity: 0.5 }]}>
+              {checkingCode ? <ActivityIndicator color={colors.accent} /> : <AppText style={styles.codeButtonLabel}>Aplică</AppText>}
+            </Pressable>
+          </View>
+          {codeError ? <AppText style={styles.error}>{codeError}</AppText> : null}
+          {cart.couponCodes.map((code) => {
+            const applied = preview.data?.coupons.find((c) => c.code === code);
+            return (
+              <View key={code} style={styles.appliedCode}>
+                <Icon name="gift" size={18} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
+                    {code.toUpperCase()}
+                  </AppText>
+                  {applied ? <AppText variant="muted">{applied.description || `Reducere ${applied.amount_label}`}</AppText> : null}
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Scoate codul ${code}`} onPress={() => cart.removeCoupon(code)} style={styles.removeCode}>
+                  <AppText style={styles.change}>Scoate</AppText>
+                </Pressable>
+              </View>
+            );
+          })}
+          {couponProblem ? <AppText style={styles.error}>{couponProblem}</AppText> : null}
+        </View>
+
+        <View style={{ gap: 8 }}>
           <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
             Plata
           </AppText>
@@ -187,6 +263,7 @@ export default function CartScreen() {
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <Row label="Produse" value={formatBani(subtotal)} />
         {isDelivery ? <Row label="Livrare" value={shipping === 0 ? 'Gratuit' : formatBani(shipping)} /> : null}
+        {discount > 0 ? <Row label="Reducere" value={`−${formatBani(discount)}`} highlight /> : null}
         <View style={styles.totalRow}>
           <AppText style={styles.total}>Total</AppText>
           <AppText style={styles.total}>{formatBani(total)}</AppText>
@@ -199,13 +276,14 @@ export default function CartScreen() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  const style = [{ fontSize: 14 }, highlight && { color: colors.accent, fontFamily: fonts.semibold }];
   return (
     <View style={styles.row}>
-      <AppText variant="muted" style={{ fontSize: 14 }}>
+      <AppText variant="muted" style={style}>
         {label}
       </AppText>
-      <AppText variant="muted" style={{ fontSize: 14 }}>
+      <AppText variant="muted" style={style}>
         {value}
       </AppText>
     </View>
@@ -227,6 +305,12 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
   change: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   payment: { minHeight: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  codeRow: { flexDirection: 'row', gap: 8 },
+  codeInput: { flex: 1, height: 46, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.text, fontFamily: fonts.regular, fontSize: 14 },
+  codeButton: { height: 46, minWidth: 80, paddingHorizontal: 18, borderRadius: 12, borderWidth: 1, borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  codeButtonLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.accent },
+  appliedCode: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.accent, backgroundColor: colors.surface },
+  removeCode: { minHeight: minTouchSize, paddingHorizontal: 14, justifyContent: 'center' },
   error: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
   footer: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 14, gap: 8, backgroundColor: colors.bar, borderTopWidth: 1, borderTopColor: colors.barBorder },
   row: { flexDirection: 'row', justifyContent: 'space-between' },

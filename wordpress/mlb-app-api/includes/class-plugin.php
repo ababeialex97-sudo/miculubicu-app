@@ -20,6 +20,8 @@ class Plugin {
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
 		Product_Fields::init();
 		Order_Status::init();
+		Coupons::init();
+		Loyalty::init();
 
 		if ( is_admin() ) {
 			Admin\Orders_Page::init();
@@ -59,6 +61,7 @@ class Plugin {
 			new Rest\Orders_Controller(),
 			new Rest\Push_Controller(),
 			new Rest\Admin_Orders_Controller(),
+			new Rest\Loyalty_Controller(),
 		);
 
 		foreach ( $controllers as $controller ) {

@@ -28,6 +28,8 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | GET | `/orders` | token | Istoricul comenzilor (paginat: `page`, `per_page`) |
 | POST | `/orders` | token | Plasează o comandă |
 | GET | `/orders/{id}` | token | O comandă, statusul ei și ora fiecărui pas |
+| GET | `/loyalty` | token | Cardul de fidelitate (ștampile) și cupoanele pe care clientul le poate folosi |
+| POST | `/cart/preview` | token | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
 | POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
 | POST / DELETE | `/push-tokens` | token | Înregistrează / șterge tokenul Expo Push al dispozitivului |
@@ -48,7 +50,8 @@ POST /wp-json/mlb/v1/orders
   "payment_method": "cod",
   "items": [
     { "product_id": 9390, "quantity": 2, "preferences": "bine făcuți" }
-  ]
+  ],
+  "coupon_codes": ["bicu-a1b2c3"]
 }
 ```
 
@@ -68,13 +71,25 @@ POST /wp-json/mlb/v1/orders
 În WordPress, sub **WooCommerce** apar două pagini noi:
 
 - **Comenzi aplicație**: comenzile deschise din aplicație, cu clientul, telefonul, adresa, produsele cu preferințele lor, observațiile, totalul și dacă au ajuns la GrandChef (`_gc_order_id`). Butoanele mută comanda la pasul următor: Acceptă → Pune pe jar → Plecată la client / Gata de ridicare → Finalizată, plus Anulează. Pagina se reîncarcă singură la 20 de secunde și sună scurt la o comandă nouă. Filtrul de sus arată doar un punct de lucru sau toate comenzile de azi. Acces: utilizatorii care pot edita comenzi (`edit_shop_orders`), de exemplu Shop Manager.
-- **Setări aplicație**: punctele de lucru (nume, adresă, telefon, livrare/ridicare, cost și prag pe punct), pragul general de livrare gratuită, metodele WooCommerce folosite pentru livrare și ridicare, modul de test.
+- **Setări aplicație**: punctele de lucru (nume, adresă, telefon, livrare/ridicare, cost și prag pe punct), pragul general de livrare gratuită, metodele WooCommerce folosite pentru livrare și ridicare, cardul de fidelitate, modul de test.
 
 Fiecare schimbare de status:
 - se salvează cu ora ei (`_mlb_status_history`), iar aplicația o arată pe ecranul de status;
 - adaugă o notă în comanda WooCommerce;
 - „Finalizată” și „Anulată” mută și comanda WooCommerce în `completed` / `cancelled`; invers, o comandă finalizată sau anulată direct din WooCommerce se actualizează și în aplicație. Comanda nu mai trece niciodată prin `processing`, deci GrandChef nu o primește a doua oară;
 - trimite clientului o notificare push.
+
+## Fidelizare și promoții
+
+Totul e construit peste cupoanele WooCommerce, deci reducerile ajung la GrandChef prin opțiunea „Spread discount”, împărțite pe produse.
+
+- **Coduri promoționale, reduceri pe produse sau categorii, promoții pe interval**: cupoane WooCommerce obișnuite (Marketing › Cupoane), cu restricțiile lor de produse, categorii, sumă minimă și dată de expirare. Pe ecranul cuponului apar două bife noi:
+  - „Afișează în aplicație”: cuponul apare în ecranul Fidelitate, cu descrierea lui, și clientul îl aplică dintr-o atingere;
+  - „Doar la prima comandă”: valabil doar pentru clienții fără nicio comandă anterioară (merge și pe site).
+- **Card de fidelitate**: fiecare comandă din aplicație ajunsă „Finalizată” adaugă o ștampilă (o singură dată per comandă). La cardul plin (implicit 4) clientul primește un cupon personal `bicu-xxxxxx`, de o singură folosință, legat de emailul lui, plus o notificare push. Numărul de comenzi, reducerea (procent sau lei) și valabilitatea se schimbă din **Setări aplicație**.
+- **Livrare gratuită peste prag**: din **Setări aplicație** (general sau pe punct de lucru); pragul se compară cu valoarea produselor înainte de reducere.
+
+O comandă primește cel mult două coduri (de exemplu un cod promoțional și recompensa de fidelitate), dacă regulile cupoanelor permit combinarea lor. Codurile se verifică înainte de crearea comenzii, deci un cod greșit nu lasă comenzi pe jumătate făcute.
 
 ## Notificări push
 
@@ -97,6 +112,7 @@ Se editează din **WooCommerce › Setări aplicație**; dedesubt, opțiunile fo
 | `mlb_app_api_test_mode` | `yes` | marchează comenzile cu „COMANDA DE TEST” |
 | `mlb_app_api_delivery_instance_id` | prima metodă `flat_rate` activă | metoda WooCommerce pentru livrare |
 | `mlb_app_api_pickup_instance_id` | prima metodă `free_shipping` activă | metoda WooCommerce pentru ridicare |
+| `mlb_app_api_loyalty` | activ, 4 comenzi, 10%, 60 de zile | cardul de fidelitate (`enabled`, `required`, `reward_type` `percent`/`fixed`, `reward_amount`, `reward_days`) |
 
 Locația aleasă de client se salvează în comandă (`_mlb_location_id`); rutarea spre serverul GrandChef al locației vine la pasul 6.
 
@@ -113,4 +129,5 @@ GrandChef nu transmite statusuri, așa că aplicația folosește meta `_mlb_stat
 ```bash
 php wordpress/mlb-app-api/tests/jwt-test.php
 php wordpress/mlb-app-api/tests/push-messages-test.php
+php wordpress/mlb-app-api/tests/loyalty-rules-test.php
 ```

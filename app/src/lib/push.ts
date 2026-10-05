@@ -73,6 +73,11 @@ export async function unregisterForPush(): Promise<void> {
 }
 
 /** Order ID carried by a status notification, if any. */
+/** Loyalty notifications (a full card) open the Fidelitate screen. */
+export function isLoyaltyNotification(notification: Notifications.Notification): boolean {
+  return notification.request.content.data?.screen === 'fidelitate';
+}
+
 export function orderIdFrom(notification: Notifications.Notification): number | null {
   const orderId = Number(notification.request.content.data?.orderId);
   return Number.isInteger(orderId) && orderId > 0 ? orderId : null;

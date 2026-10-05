@@ -102,6 +102,12 @@ export default function OrderStatusScreen() {
               <AppText style={styles.itemText}>{formatPrice(data.shipping_total)}</AppText>
             </View>
           ) : null}
+          {Number.parseFloat(data.discount_total) > 0 ? (
+            <View style={styles.itemRow}>
+              <AppText style={[styles.itemText, styles.discount]}>Reducere{data.coupon_codes.length ? ` · ${data.coupon_codes.join(', ').toUpperCase()}` : ''}</AppText>
+              <AppText style={[styles.itemText, styles.discount]}>−{formatPrice(data.discount_total)}</AppText>
+            </View>
+          ) : null}
           <View style={[styles.itemRow, styles.totalRow]}>
             <AppText style={[styles.itemText, { fontFamily: fonts.bold }]}>Total · {data.fulfillment === 'pickup' ? 'numerar la ridicare' : 'numerar la livrare'}</AppText>
             <AppText style={[styles.itemText, { fontFamily: fonts.bold }]}>{formatPrice(data.total)}</AppText>
@@ -139,5 +145,6 @@ const styles = StyleSheet.create({
   card: { padding: 14, borderRadius: 14, backgroundColor: colors.surface, gap: 6 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   itemText: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
+  discount: { color: colors.accent, fontFamily: fonts.semibold },
   totalRow: { paddingTop: 6, marginTop: 2, borderTopWidth: 1, borderTopColor: colors.border },
 });
