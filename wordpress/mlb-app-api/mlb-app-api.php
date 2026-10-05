@@ -21,6 +21,7 @@ require_once __DIR__ . '/includes/class-settings.php';
 require_once __DIR__ . '/includes/class-statuses.php';
 require_once __DIR__ . '/includes/class-auth.php';
 require_once __DIR__ . '/includes/class-formatter.php';
+require_once __DIR__ . '/includes/class-product-fields.php';
 require_once __DIR__ . '/includes/rest/class-auth-controller.php';
 require_once __DIR__ . '/includes/rest/class-menu-controller.php';
 require_once __DIR__ . '/includes/rest/class-config-controller.php';

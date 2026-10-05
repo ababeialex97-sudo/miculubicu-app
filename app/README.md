@@ -17,12 +17,21 @@ npx expo start
 ```bash
 npx tsc --noEmit
 npx expo lint
+npm test          # teste pentru logica coșului și prețuri (Node, fără emulator)
 ```
 
 ## Structură
 
-- `src/app/` – doar ecrane și layout-uri (expo-router);
-- `src/constants/theme.ts` – culori și fonturi din machetă;
-- restul codului (componente, hook-uri, client API) stă în `src/`, în afara `src/app/`.
+- `src/app/` – doar ecrane și layout-uri (expo-router):
+  - `(tabs)/` – Meniu, Comenzi (istoric + „Comandă din nou”), Fidelitate (provizoriu până la pasul 5), Cont;
+  - `produs/[id]` – produs cu variante, preferințe, observații și cantitate;
+  - `cos` – coș și finalizarea comenzii (livrare/ridicare, punct de lucru, adresă, telefon, plată numerar);
+  - `comanda/[id]` – statusul comenzii (se actualizează la 30 s până vin notificările push);
+  - `autentificare`, `locatie` – ferestre modale;
+- `src/api/` – clientul HTTP, tipurile și hook-urile TanStack Query pentru `mlb-app-api`;
+- `src/store/` – coșul (Zustand, salvat pe telefon) și sesiunea (token în keychain prin expo-secure-store);
+- `src/lib/` – logică fără UI (prețuri în bani, coș, statusuri), cu teste;
+- `src/components/` – componente comune (butoane, câmpuri, iconițe din machetă);
+- `src/constants/theme.ts` – culori și fonturi din machetă.
 
-Ecranele (meniu, produs, coș, checkout, status) se construiesc la pasul 3 din `CLAUDE.md`.
+Prețurile afișate în coș sunt o estimare; totalul final îl calculează serverul.
