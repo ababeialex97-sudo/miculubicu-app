@@ -75,6 +75,10 @@ Până la panoul de administrare (pasul 4), setările se schimbă din opțiuni:
 
 Locația aleasă de client se salvează în comandă (`_mlb_location_id`); rutarea spre serverul GrandChef al locației vine la pasul 6.
 
+## Preferințe pe produs
+
+În editorul de produs (WooCommerce › Produse › General) apare câmpul „Preferințe în aplicație”: câte o opțiune pe rând, de exemplu „Cu muștar”. Aplicația le arată ca butoane, iar alegerile clientului, împreună cu observația lui, ajung pe linia de comandă în meta `Preferinte`, deci la GrandChef ca notă pe produs. În `/menu` apar ca `preference_options`.
+
 ## Statusuri în aplicație
 
 GrandChef nu transmite statusuri, așa că aplicația folosește meta `_mlb_status` (`received`, `confirmed`, `preparing`, `on_the_way`, `ready_for_pickup`, `completed`, `cancelled`), schimbat de personal din panou (pasul 4).

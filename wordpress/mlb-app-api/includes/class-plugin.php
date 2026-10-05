@@ -18,6 +18,7 @@ class Plugin {
 		}
 
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
+		Product_Fields::init();
 
 		// The cached menu must follow catalogue changes.
 		foreach ( array( 'woocommerce_update_product', 'woocommerce_new_product', 'woocommerce_delete_product', 'woocommerce_trash_product', 'woocommerce_update_product_variation', 'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status', 'created_product_cat', 'edited_product_cat', 'delete_product_cat' ) as $hook ) {
