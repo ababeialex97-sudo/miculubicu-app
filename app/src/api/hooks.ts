@@ -87,6 +87,12 @@ export function useUpdateProfile() {
   });
 }
 
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: (password: string) => api<{ deleted: boolean }>('/me', { method: 'DELETE', body: { password }, auth: true }),
+  });
+}
+
 export function useCreateOrder() {
   const queryClient = useQueryClient();
   return useMutation({

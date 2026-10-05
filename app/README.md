@@ -23,7 +23,7 @@ npm test          # teste pentru logica coșului și prețuri (Node, fără emul
 ## Structură
 
 - `src/app/` – doar ecrane și layout-uri (expo-router):
-  - `(tabs)/` – Meniu, Comenzi (istoric + „Comandă din nou”), Fidelitate (provizoriu până la pasul 5), Cont;
+  - `(tabs)/` – Meniu, Comenzi (istoric + „Comandă din nou”), Fidelitate (card cu ștampile, cupoane), Cont (profil, politica de confidențialitate, ștergerea contului);
   - `produs/[id]` – produs cu variante, preferințe, observații și cantitate;
   - `cos` – coș și finalizarea comenzii (livrare/ridicare, punct de lucru, adresă, telefon, plată numerar);
   - `comanda/[id]` – statusul comenzii, cu ora fiecărui pas (se reîncarcă la 30 s și la fiecare notificare);
@@ -36,7 +36,12 @@ npm test          # teste pentru logica coșului și prețuri (Node, fără emul
 
 Prețurile afișate în coș sunt o estimare; totalul final îl calculează serverul.
 
+## Build și publicare
+
+Build-urile se fac cu EAS (`eas.json`: profilele `preview` și `production`); pașii completi, conturile necesare și textele pentru magazine sunt în [`docs/publicare.md`](../docs/publicare.md).
+ID-uri: `ro.miculubicu.app` (iOS și Android). Iconițele din `assets/images/` sunt provizorii până la logo-ul vectorial al clientului.
+
 ## Notificări push
 
 Aplicația cere permisiunea după prima comandă și înregistrează telefonul la `mlb-app-api` (`/push-tokens`); la ieșirea din cont îl șterge. Atingerea unei notificări deschide comanda.
-Expo Push are nevoie de ID-ul proiectului EAS: rulează o dată `npx eas init` (cu contul Expo al clientului), care îl scrie în `app.json`. Până atunci înregistrarea e sărită fără erori. Pe web și în simulator nu există notificări push.
+Expo Push are nevoie de ID-ul proiectului EAS: rulează o dată `npx eas init` (cu contul Expo al clientului), care îl scrie în `app.json`. Până atunci înregistrarea e sărită fără erori. Pe Android mai trebuie `google-services.json` (Firebase), dat prin variabila EAS `GOOGLE_SERVICES_JSON` (vezi `app.config.js`). Pe web și în simulator nu există notificări push.

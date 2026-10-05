@@ -25,6 +25,7 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | POST | `/auth/login` | – | Autentificare cu email și parolă; întoarce token + profil |
 | POST | `/auth/password-reset` | – | Trimite emailul standard de resetare a parolei |
 | GET / PATCH | `/me` | token | Profilul clientului (nume, telefon, adresă) |
+| DELETE | `/me` | token + parola | Șterge contul (cerință App Store / Google Play): contul și cupoanele personale; comenzile rămân în WooCommerce, fără client. Conturile de personal nu se pot șterge de aici |
 | GET | `/orders` | token | Istoricul comenzilor (paginat: `page`, `per_page`) |
 | POST | `/orders` | token | Plasează o comandă |
 | GET | `/orders/{id}` | token | O comandă, statusul ei și ora fiecărui pas |
