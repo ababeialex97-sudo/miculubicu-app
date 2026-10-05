@@ -115,6 +115,7 @@ export type Order = {
   created_at: string | null;
   status: OrderStatus;
   status_label: string;
+  status_history: { status: OrderStatus; at: string }[];
   fulfillment: Fulfillment | '';
   location_id: string;
   items: OrderItem[];

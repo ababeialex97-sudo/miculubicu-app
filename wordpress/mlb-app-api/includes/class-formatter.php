@@ -89,6 +89,7 @@ class Formatter {
 			'created_at'      => $created ? $created->format( DATE_ATOM ) : null,
 			'status'          => $status,
 			'status_label'    => Statuses::labels()[ $status ],
+			'status_history'  => Statuses::history( $order ),
 			'fulfillment'     => (string) $order->get_meta( '_mlb_fulfillment' ),
 			'location_id'     => (string) $order->get_meta( '_mlb_location_id' ),
 			'items'           => $items,

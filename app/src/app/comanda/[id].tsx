@@ -7,7 +7,7 @@ import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, LoadError } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { formatPrice } from '@/lib/money';
-import { headline, timeline } from '@/lib/status';
+import { formatTime, headline, timeline } from '@/lib/status';
 
 export default function OrderStatusScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +30,7 @@ export default function OrderStatusScreen() {
   const steps = timeline(data.fulfillment);
   const currentIndex = steps.findIndex((s) => s.status === data.status);
   const cancelled = data.status === 'cancelled';
+  const reachedAt = new Map(data.status_history.map((h) => [h.status, h.at]));
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -66,14 +67,17 @@ export default function OrderStatusScreen() {
                     </View>
                     {!last ? <View style={[styles.line, done && { backgroundColor: colors.accent }]} /> : null}
                   </View>
-                  <AppText
-                    style={[
-                      styles.stepLabel,
-                      (done || current) && { fontFamily: fonts.bold, color: colors.text },
-                      current && { color: colors.accent },
-                    ]}>
-                    {step.label}
-                  </AppText>
+                  <View style={styles.stepText}>
+                    <AppText
+                      style={[
+                        styles.stepLabel,
+                        (done || current) && { fontFamily: fonts.bold, color: colors.text },
+                        current && { color: colors.accent },
+                      ]}>
+                      {step.label}
+                    </AppText>
+                    {(done || current) && reachedAt.has(step.status) ? <AppText variant="muted">{formatTime(reachedAt.get(step.status) ?? '')}</AppText> : null}
+                  </View>
                 </View>
               );
             })}
@@ -129,8 +133,9 @@ const styles = StyleSheet.create({
   dot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   dotDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   dotCurrent: { borderWidth: 3, borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  line: { width: 2, height: 30, backgroundColor: colors.border },
-  stepLabel: { paddingTop: 3, fontFamily: fonts.medium, fontSize: 16, color: colors.textMuted },
+  line: { width: 2, flex: 1, minHeight: 30, backgroundColor: colors.border },
+  stepText: { paddingTop: 3, gap: 2, paddingBottom: 8 },
+  stepLabel: { fontFamily: fonts.medium, fontSize: 16, color: colors.textMuted },
   card: { padding: 14, borderRadius: 14, backgroundColor: colors.surface, gap: 6 },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   itemText: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },

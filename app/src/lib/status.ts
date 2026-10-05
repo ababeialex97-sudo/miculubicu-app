@@ -37,3 +37,12 @@ export function headline(status: OrderStatus, fulfillment: Fulfillment | ''): st
 export function isActive(status: OrderStatus): boolean {
   return status !== 'completed' && status !== 'cancelled';
 }
+
+/** "19:04" in the device's time zone. */
+export function formatTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}

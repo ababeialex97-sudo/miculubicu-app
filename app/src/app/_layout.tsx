@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 
 import { colors } from '@/constants/theme';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { useSession } from '@/store/session';
 
 void SplashScreen.preventAutoHideAsync();
@@ -47,18 +48,26 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="produs/[id]" />
-        <Stack.Screen name="cos" />
-        <Stack.Screen name="comanda/[id]" />
-        <Stack.Screen name="autentificare" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="locatie" options={{ presentation: 'modal' }} />
-      </Stack>
+      <AppStack />
     </QueryClientProvider>
+  );
+}
+
+function AppStack() {
+  usePushNotifications();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="produs/[id]" />
+      <Stack.Screen name="cos" />
+      <Stack.Screen name="comanda/[id]" />
+      <Stack.Screen name="autentificare" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="locatie" options={{ presentation: 'modal' }} />
+    </Stack>
   );
 }

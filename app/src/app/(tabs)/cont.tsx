@@ -8,6 +8,7 @@ import { queryKeys, useUpdateProfile } from '@/api/hooks';
 import type { Customer } from '@/api/types';
 import { AppText, Button, Centered, Field } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
+import { unregisterForPush } from '@/lib/push';
 import { useSession } from '@/store/session';
 
 export default function AccountScreen() {
@@ -46,7 +47,8 @@ function ProfileForm({ customer }: { customer: Customer }) {
       address: { address_1: address1.trim(), address_2: address2.trim(), city: city.trim() },
     });
 
-  const logout = () => {
+  const logout = async () => {
+    await unregisterForPush();
     signOut();
     queryClient.removeQueries({ queryKey: queryKeys.orders });
   };
@@ -67,7 +69,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
         {update.isError ? <AppText style={styles.error}>{update.error.message}</AppText> : null}
         {update.isSuccess ? <AppText>Datele au fost salvate.</AppText> : null}
         <Button label="Salvează" loading={update.isPending} onPress={save} />
-        <Button label="Ieși din cont" variant="outline" onPress={logout} />
+        <Button label="Ieși din cont" variant="outline" onPress={() => void logout()} />
       </ScrollView>
     </SafeAreaView>
   );

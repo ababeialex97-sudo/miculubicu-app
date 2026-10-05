@@ -27,7 +27,9 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | GET / PATCH | `/me` | token | Profilul clientului (nume, telefon, adresă) |
 | GET | `/orders` | token | Istoricul comenzilor (paginat: `page`, `per_page`) |
 | POST | `/orders` | token | Plasează o comandă |
-| GET | `/orders/{id}` | token | O comandă și statusul ei |
+| GET | `/orders/{id}` | token | O comandă, statusul ei și ora fiecărui pas |
+| GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
+| POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
 | POST / DELETE | `/push-tokens` | token | Înregistrează / șterge tokenul Expo Push al dispozitivului |
 
 Autentificarea folosește `Authorization: Bearer <token>` (JWT HS256, valabil 30 de zile). Schimbarea parolei invalidează toate tokenurile clientului.
@@ -61,9 +63,32 @@ POST /wp-json/mlb/v1/orders
 - Înainte de trimiterea spre GrandChef, `default_socket_timeout` e setat la 10 secunde, ca o problemă de rețea să nu blocheze cererea până la 504.
 - În modul de test (implicit activ) observația comenzii începe cu „COMANDA DE TEST”.
 
+## Panoul pentru personal
+
+În WordPress, sub **WooCommerce** apar două pagini noi:
+
+- **Comenzi aplicație**: comenzile deschise din aplicație, cu clientul, telefonul, adresa, produsele cu preferințele lor, observațiile, totalul și dacă au ajuns la GrandChef (`_gc_order_id`). Butoanele mută comanda la pasul următor: Acceptă → Pune pe jar → Plecată la client / Gata de ridicare → Finalizată, plus Anulează. Pagina se reîncarcă singură la 20 de secunde și sună scurt la o comandă nouă. Filtrul de sus arată doar un punct de lucru sau toate comenzile de azi. Acces: utilizatorii care pot edita comenzi (`edit_shop_orders`), de exemplu Shop Manager.
+- **Setări aplicație**: punctele de lucru (nume, adresă, telefon, livrare/ridicare, cost și prag pe punct), pragul general de livrare gratuită, metodele WooCommerce folosite pentru livrare și ridicare, modul de test.
+
+Fiecare schimbare de status:
+- se salvează cu ora ei (`_mlb_status_history`), iar aplicația o arată pe ecranul de status;
+- adaugă o notă în comanda WooCommerce;
+- „Finalizată” și „Anulată” mută și comanda WooCommerce în `completed` / `cancelled`; invers, o comandă finalizată sau anulată direct din WooCommerce se actualizează și în aplicație. Comanda nu mai trece niciodată prin `processing`, deci GrandChef nu o primește a doua oară;
+- trimite clientului o notificare push.
+
+## Notificări push
+
+Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat. Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
+
+```php
+define( 'MLB_APP_API_EXPO_ACCESS_TOKEN', '...' );
+```
+
+Erorile de trimitere ajung în WooCommerce › Status › Logs (sursa `mlb-app-api`) și nu blochează schimbarea statusului.
+
 ## Setări (opțiuni WordPress)
 
-Până la panoul de administrare (pasul 4), setările se schimbă din opțiuni:
+Se editează din **WooCommerce › Setări aplicație**; dedesubt, opțiunile folosite:
 
 | Opțiune | Implicit | Rol |
 | --- | --- | --- |
@@ -81,10 +106,11 @@ Locația aleasă de client se salvează în comandă (`_mlb_location_id`); rutar
 
 ## Statusuri în aplicație
 
-GrandChef nu transmite statusuri, așa că aplicația folosește meta `_mlb_status` (`received`, `confirmed`, `preparing`, `on_the_way`, `ready_for_pickup`, `completed`, `cancelled`), schimbat de personal din panou (pasul 4).
+GrandChef nu transmite statusuri, așa că aplicația folosește meta `_mlb_status` (`received`, `confirmed`, `preparing`, `on_the_way`, `ready_for_pickup`, `completed`, `cancelled`), schimbat de personal din panoul „Comenzi aplicație”.
 
 ## Teste
 
 ```bash
 php wordpress/mlb-app-api/tests/jwt-test.php
+php wordpress/mlb-app-api/tests/push-messages-test.php
 ```
