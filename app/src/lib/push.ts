@@ -1,31 +1,48 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { api } from '@/api/client';
 
 const REGISTERED_TOKEN_KEY = 'mlb.pushToken';
 
-// Status notifications are shown even while the app is open.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Expo Go dropped push notifications on Android (SDK 53) and throws as soon as
+// expo-notifications is loaded, so the module is only loaded in real builds.
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let notificationsModule: typeof NotificationsModule | null = null;
+
+/** expo-notifications, or null where push isn't available (web, Expo Go). */
+export function getNotifications(): typeof NotificationsModule | null {
+  if (Platform.OS === 'web' || isExpoGo) {
+    return null;
+  }
+  if (!notificationsModule) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    notificationsModule = require('expo-notifications') as typeof NotificationsModule;
+    // Status notifications are shown even while the app is open.
+    notificationsModule.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  }
+  return notificationsModule;
+}
 
 /**
  * Registers this device for order status notifications with mlb-app-api.
  * With `ask`, the system permission prompt is shown if the customer hasn't answered it yet;
  * without it, registration only happens when permission was already granted.
- * Does nothing on web, simulators, or before the EAS project ID exists (needed by Expo Push).
+ * Does nothing on web, in Expo Go, on simulators, or before the EAS project ID exists (needed by Expo Push).
  */
 export async function registerForPush({ ask }: { ask: boolean }): Promise<void> {
-  if (Platform.OS === 'web' || !Device.isDevice) {
+  const Notifications = getNotifications();
+  if (!Notifications || !Device.isDevice) {
     return;
   }
 
@@ -72,13 +89,13 @@ export async function unregisterForPush(): Promise<void> {
   }
 }
 
-/** Order ID carried by a status notification, if any. */
 /** Loyalty notifications (a full card) open the Fidelitate screen. */
-export function isLoyaltyNotification(notification: Notifications.Notification): boolean {
+export function isLoyaltyNotification(notification: NotificationsModule.Notification): boolean {
   return notification.request.content.data?.screen === 'fidelitate';
 }
 
-export function orderIdFrom(notification: Notifications.Notification): number | null {
+/** Order ID carried by a status notification, if any. */
+export function orderIdFrom(notification: NotificationsModule.Notification): number | null {
   const orderId = Number(notification.request.content.data?.orderId);
   return Number.isInteger(orderId) && orderId > 0 ? orderId : null;
 }
