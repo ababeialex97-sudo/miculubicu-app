@@ -1,10 +1,12 @@
 <?php
 /**
- * "Setări aplicație" under WooCommerce: locations, free delivery, shipping methods, test mode.
+ * "Setări aplicație" under WooCommerce: locations, free delivery, shipping methods, loyalty card, test mode.
  */
 
 namespace MLB\AppApi\Admin;
 
+use MLB\AppApi\Loyalty;
+use MLB\AppApi\Loyalty_Rules;
 use MLB\AppApi\Rest\Menu_Controller;
 use MLB\AppApi\Settings;
 
@@ -34,6 +36,7 @@ class Settings_Page {
 			$locations[] = array();
 		}
 		$methods = self::shipping_methods();
+		$loyalty = Loyalty::settings();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 		$saved = isset( $_GET['saved'] );
 		?>
@@ -101,6 +104,33 @@ class Settings_Page {
 					</tr>
 				</table>
 
+				<h2>Card de fidelitate</h2>
+				<p class="description">Fiecare comandă din aplicație marcată „Finalizată” adaugă o ștampilă. Cardul plin devine un cupon personal, de o singură folosință. Promoțiile și codurile se fac din Marketing → Cupoane (bifează „Afișează în aplicație”).</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">Card activ</th>
+						<td><label><input type="checkbox" name="loyalty[enabled]" value="1" <?php checked( $loyalty['enabled'] ); ?>> Clienții primesc ștampile</label></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-loyalty-required">Comenzi pentru recompensă</label></th>
+						<td><input id="mlb-loyalty-required" type="number" min="1" max="20" step="1" name="loyalty[required]" value="<?php echo esc_attr( (string) $loyalty['required'] ); ?>"></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-loyalty-amount">Reducere</label></th>
+						<td>
+							<input id="mlb-loyalty-amount" type="number" min="0" step="0.01" style="width:90px" name="loyalty[reward_amount]" value="<?php echo esc_attr( (string) $loyalty['reward_amount'] ); ?>">
+							<select name="loyalty[reward_type]" aria-label="Tip reducere">
+								<option value="percent" <?php selected( $loyalty['reward_type'], 'percent' ); ?>>% din comandă</option>
+								<option value="fixed" <?php selected( $loyalty['reward_type'], 'fixed' ); ?>>lei</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-loyalty-days">Valabilitate recompensă (zile)</label></th>
+						<td><input id="mlb-loyalty-days" type="number" min="1" max="365" step="1" name="loyalty[reward_days]" value="<?php echo esc_attr( (string) $loyalty['reward_days'] ); ?>"></td>
+					</tr>
+				</table>
+
 				<h2>Mod de test</h2>
 				<table class="form-table" role="presentation">
 					<tr>
@@ -133,6 +163,14 @@ class Settings_Page {
 		update_option( Settings::OPTION_DELIVERY_INSTANCE, absint( $_POST['delivery_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_PICKUP_INSTANCE, absint( $_POST['pickup_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_TEST_MODE, empty( $_POST['test_mode'] ) ? 'no' : 'yes' );
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalized below.
+		$loyalty            = isset( $_POST['loyalty'] ) && is_array( $_POST['loyalty'] ) ? wp_unslash( $_POST['loyalty'] ) : array();
+		$loyalty['enabled'] = ! empty( $loyalty['enabled'] );
+		if ( isset( $loyalty['reward_amount'] ) ) {
+			$loyalty['reward_amount'] = str_replace( ',', '.', (string) $loyalty['reward_amount'] );
+		}
+		update_option( Loyalty::OPTION, Loyalty_Rules::normalize( $loyalty ) );
 
 		Menu_Controller::flush_cache();
 

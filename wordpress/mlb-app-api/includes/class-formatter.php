@@ -74,7 +74,8 @@ class Formatter {
 				'variation_id' => $item->get_variation_id(),
 				'name'         => $item->get_name(),
 				'quantity'     => $item->get_quantity(),
-				'total'        => self::money( (float) $item->get_total() + (float) $item->get_total_tax() ),
+				// Before coupon discounts, which are shown once on the order (discount_total).
+				'total'        => self::money( (float) $item->get_subtotal() + (float) $item->get_subtotal_tax() ),
 				'preferences'  => (string) $item->get_meta( 'Preferinte' ),
 				'image'        => $product ? self::image( (int) $product->get_image_id() ) : null,
 			);
@@ -95,7 +96,8 @@ class Formatter {
 			'items'           => $items,
 			'subtotal'        => self::money( $order->get_subtotal() ),
 			'shipping_total'  => self::money( (float) $order->get_shipping_total() + (float) $order->get_shipping_tax() ),
-			'discount_total'  => self::money( $order->get_discount_total() ),
+			'discount_total'  => self::money( (float) $order->get_discount_total() + (float) $order->get_discount_tax() ),
+			'coupon_codes'    => array_values( $order->get_coupon_codes() ),
 			'total'           => self::money( $order->get_total() ),
 			'currency'        => $order->get_currency(),
 			'payment_method'  => $order->get_payment_method(),

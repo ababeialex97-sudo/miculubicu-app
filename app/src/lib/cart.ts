@@ -52,3 +52,39 @@ export function deliveryFeeBani(subtotal: number, feeBani: number, freeThreshold
 export function joinPreferences(chips: string[], note: string): string {
   return [...chips, note.trim()].filter(Boolean).join(', ');
 }
+
+export const MAX_COUPONS = 2;
+
+/** Coupon codes as WooCommerce stores them: trimmed and lower-case. */
+export function normalizeCouponCode(code: string): string {
+  return code.trim().toLowerCase();
+}
+
+/** Adds a code once; with two codes already applied the newest replaces the last one. */
+export function addCouponCode(codes: string[], code: string): string[] {
+  const normalized = normalizeCouponCode(code);
+  if (!normalized || codes.includes(normalized)) {
+    return codes;
+  }
+  return [...codes.slice(0, MAX_COUPONS - 1), normalized];
+}
+
+export function removeCouponCode(codes: string[], code: string): string[] {
+  return codes.filter((c) => c !== normalizeCouponCode(code));
+}
+
+/** The items part of an order or a cart preview. */
+export function orderItems(lines: CartLine[]) {
+  return lines.map((l) => ({
+    product_id: l.productId,
+    variation_id: l.variationId || undefined,
+    quantity: l.quantity,
+    preferences: l.preferences || undefined,
+  }));
+}
+
+/** Stamps left until the loyalty reward, for the menu banner. */
+export function stampsLeftLabel(stamps: number, required: number): string {
+  const left = Math.max(1, required - stamps);
+  return left === 1 ? 'Încă o comandă până la reducere' : `Încă ${left} comenzi până la reducere`;
+}

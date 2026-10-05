@@ -4,13 +4,15 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useConfig, useMenu } from '@/api/hooks';
+import { useConfig, useLoyalty, useMenu } from '@/api/hooks';
 import type { Product } from '@/api/types';
 import { CartBar } from '@/components/cart-bar';
 import { Icon } from '@/components/icon';
 import { AppText, Centered, Chip, LoadError } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
+import { stampsLeftLabel } from '@/lib/cart';
 import { productSubtitle } from '@/lib/format';
+import { stampSlots } from '@/lib/loyalty';
 import { resolveLocation } from '@/lib/location';
 import { formatPrice } from '@/lib/money';
 import { useCart } from '@/store/cart';
@@ -20,6 +22,7 @@ const ALL = 0;
 export default function MenuScreen() {
   const menu = useMenu();
   const config = useConfig();
+  const loyalty = useLoyalty();
   const [categoryId, setCategoryId] = useState(ALL);
   const { fulfillment, locationId, add } = useCart();
   const location = resolveLocation(config.data, locationId);
@@ -94,12 +97,25 @@ export default function MenuScreen() {
               </Pressable>
             </Link>
 
-            <Link href="/fidelitate" asChild>
-              <Pressable accessibilityRole="link" style={styles.loyalty}>
-                <AppText style={styles.loyaltyTitle}>Cardul de fidelitate</AppText>
-                <AppText style={styles.loyaltyText}>La fiecare 4 comenzi primești o reducere</AppText>
-              </Pressable>
-            </Link>
+            {loyalty.data?.enabled === false ? null : (
+              <Link href="/fidelitate" asChild>
+                <Pressable accessibilityRole="link" style={styles.loyalty}>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <AppText style={styles.loyaltyTitle}>Cardul de fidelitate</AppText>
+                    <AppText style={styles.loyaltyText}>
+                      {loyalty.data ? stampsLeftLabel(loyalty.data.stamps, loyalty.data.required) : 'La fiecare 4 comenzi primești o reducere'}
+                    </AppText>
+                  </View>
+                  {loyalty.data && loyalty.data.required <= 8 ? (
+                    <View style={styles.dots}>
+                      {stampSlots(loyalty.data.stamps, loyalty.data.required).map((filled, i) => (
+                        <View key={i} style={[styles.dot, filled ? styles.dotFilled : styles.dotEmpty]} />
+                      ))}
+                    </View>
+                  ) : null}
+                </Pressable>
+              </Link>
+            )}
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
               <Chip kind="filter" label="Toate" selected={categoryId === ALL} onPress={() => setCategoryId(ALL)} />
@@ -171,7 +187,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  loyalty: { padding: 16, borderRadius: 16, backgroundColor: colors.accent, gap: 3 },
+  loyalty: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 16, backgroundColor: colors.accent },
+  dots: { flexDirection: 'row', gap: 6 },
+  dot: { width: 18, height: 18, borderRadius: 9 },
+  dotFilled: { backgroundColor: colors.onAccent },
+  dotEmpty: { borderWidth: 2, borderColor: colors.onAccent },
   loyaltyTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.onAccent },
   loyaltyText: { fontFamily: fonts.medium, fontSize: 13, color: colors.onAccent },
   chips: { gap: 8, paddingVertical: 4 },

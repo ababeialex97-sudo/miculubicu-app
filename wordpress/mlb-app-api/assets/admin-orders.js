@@ -238,6 +238,12 @@
 				} )
 			),
 			order.note ? el( 'p', { class: 'mlb-note', text: order.note } ) : null,
+			parseFloat( order.discount_total ) > 0
+				? el( 'p', { class: 'mlb-discount' }, [
+					el( 'span', { text: 'Reducere ' + order.coupon_codes.join( ', ' ).toUpperCase() } ),
+					el( 'span', { text: '−' + money( order.discount_total ) } ),
+				] )
+				: null,
 			el( 'p', { class: 'mlb-total' }, [
 				el( 'span', { text: 'Total, numerar' } ),
 				el( 'strong', { text: money( order.total ) } ),

@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/api/client';
-import type { Config, Customer, Menu, NewOrder, Order, Session } from '@/api/types';
+import type { CartPreview, CartPreviewRequest, Config, Customer, Loyalty, Menu, NewOrder, Order, Session } from '@/api/types';
 import { useSession } from '@/store/session';
 
 export const queryKeys = {
@@ -9,6 +9,8 @@ export const queryKeys = {
   config: ['config'] as const,
   orders: ['orders'] as const,
   order: (id: number) => ['orders', id] as const,
+  loyalty: ['loyalty'] as const,
+  cartPreview: (request: CartPreviewRequest) => ['cart-preview', request] as const,
 };
 
 // Order statuses only change when staff update them, so a slow poll is enough
@@ -92,6 +94,36 @@ export function useCreateOrder() {
     onSuccess: (order) => {
       queryClient.setQueryData(queryKeys.order(order.id), order);
       void queryClient.invalidateQueries({ queryKey: queryKeys.orders });
+      // A used reward coupon disappears from the loyalty screen.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.loyalty });
     },
+  });
+}
+
+export function useLoyalty() {
+  const token = useSession((s) => s.token);
+  return useQuery({
+    queryKey: queryKeys.loyalty,
+    queryFn: () => api<Loyalty>('/loyalty', { auth: true }),
+    enabled: token !== null,
+  });
+}
+
+export function previewCart(request: CartPreviewRequest) {
+  return api<CartPreview>('/cart/preview', { method: 'POST', body: request, auth: true });
+}
+
+/**
+ * Server totals for a cart with coupon codes, recomputed when the cart changes.
+ * Without codes the local totals are already exact, so nothing is fetched.
+ */
+export function useCartPreview(request: CartPreviewRequest | null) {
+  const token = useSession((s) => s.token);
+  return useQuery({
+    queryKey: queryKeys.cartPreview(request ?? { items: [], coupon_codes: [], fulfillment: 'delivery', location_id: '' }),
+    queryFn: () => previewCart(request!),
+    enabled: token !== null && request !== null && request.coupon_codes.length > 0 && request.items.length > 0,
+    placeholderData: keepPreviousData,
+    retry: false,
   });
 }
