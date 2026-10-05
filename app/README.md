@@ -39,7 +39,7 @@ Prețurile afișate în coș sunt o estimare; totalul final îl calculează serv
 ## Build și publicare
 
 Build-urile se fac cu EAS (`eas.json`: profilele `preview` și `production`); pașii completi, conturile necesare și textele pentru magazine sunt în [`docs/publicare.md`](../docs/publicare.md).
-ID-uri: `ro.miculubicu.app` (iOS și Android). Iconițele din `assets/images/` sunt provizorii până la logo-ul vectorial al clientului.
+ID-uri: `ro.miculubicu.app` (iOS și Android). Iconițele, ecranul de pornire și iconița notificărilor sunt generate din `assets/images/logo.png` (logo-ul rotund, 500 × 500 px). Cu un logo vectorial sau de minimum 1024 px iconița iOS ar fi mai clară; se regenerează la fel.
 
 ## Notificări push
 

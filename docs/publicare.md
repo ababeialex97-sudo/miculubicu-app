@@ -15,7 +15,7 @@ Conturile se fac **pe firma clientului** (CLAUDE.md §8), nu pe numele dezvoltat
 | Proiect Firebase | gratuit | Necesar doar pentru notificările push pe Android (FCM). |
 | Pagină „Politica de confidențialitate” pe site | – | Ciornă în [politica-confidentialitate.md](politica-confidentialitate.md). Ambele magazine cer linkul. |
 | Pagină / email pentru ștergerea contului | – | Google cere un link web unde clientul poate cere ștergerea contului și fără aplicație. |
-| Logo vectorial (SVG/PDF) | – | Iconițele din `app/assets/images/` sunt provizorii (flacără pe fundal cărbune). |
+| Logo vectorial (SVG/PDF) sau PNG de minimum 1024 px | – | Iconițele sunt făcute din logo-ul rotund primit (500 px); iconița iOS de 1024 px e mărită din el, deci ușor moale. |
 | Poze reale ale produselor, încărcate în WooCommerce | – | Aplicația le ia din WooCommerce. |
 
 ## 2. Unelte
