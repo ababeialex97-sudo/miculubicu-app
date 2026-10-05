@@ -1,16 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { queryKeys, useUpdateProfile } from '@/api/hooks';
+import { queryKeys, useDeleteAccount, useUpdateProfile } from '@/api/hooks';
 import type { Customer } from '@/api/types';
 import { AppText, Button, Centered, Field } from '@/components/ui';
-import { colors, fonts } from '@/constants/theme';
+import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { unregisterForPush } from '@/lib/push';
 import { useCart } from '@/store/cart';
 import { useSession } from '@/store/session';
+
+const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://miculubicu.ro/politica-de-confidentialitate/';
 
 export default function AccountScreen() {
   const customer = useSession((s) => s.customer);
@@ -48,8 +51,11 @@ function ProfileForm({ customer }: { customer: Customer }) {
       address: { address_1: address1.trim(), address_2: address2.trim(), city: city.trim() },
     });
 
-  const logout = async () => {
-    await unregisterForPush();
+  const deleteAccount = useDeleteAccount();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [password, setPassword] = useState('');
+
+  const clearAccountData = () => {
     signOut();
     queryClient.removeQueries({ queryKey: queryKeys.orders });
     queryClient.removeQueries({ queryKey: queryKeys.loyalty });
@@ -59,6 +65,20 @@ function ProfileForm({ customer }: { customer: Customer }) {
       useCart.getState().removeCoupon(code);
     }
   };
+
+  const logout = async () => {
+    await unregisterForPush();
+    clearAccountData();
+  };
+
+  // The server drops the account's push tokens together with the account.
+  const confirmDelete = () =>
+    deleteAccount.mutate(password, {
+      onSuccess: () => {
+        clearAccountData();
+        router.replace('/');
+      },
+    });
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -77,6 +97,25 @@ function ProfileForm({ customer }: { customer: Customer }) {
         {update.isSuccess ? <AppText>Datele au fost salvate.</AppText> : null}
         <Button label="Salvează" loading={update.isPending} onPress={save} />
         <Button label="Ieși din cont" variant="outline" onPress={() => void logout()} />
+
+        <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)} style={styles.link}>
+          <AppText style={styles.linkText}>Politica de confidențialitate</AppText>
+        </Pressable>
+
+        {confirmingDelete ? (
+          <View style={styles.danger}>
+            <AppText variant="bodyStrong">Ștergi contul?</AppText>
+            <AppText variant="muted">Se șterg datele contului, cardul de fidelitate și cupoanele tale. Comenzile deja plasate rămân la restaurant pentru evidența contabilă.</AppText>
+            <Field label="Parola, pentru confirmare" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" />
+            {deleteAccount.isError ? <AppText style={styles.error}>{deleteAccount.error.message}</AppText> : null}
+            <Button label="Șterge definitiv contul" loading={deleteAccount.isPending} disabled={!password} onPress={confirmDelete} />
+            <Button label="Renunță" variant="outline" onPress={() => setConfirmingDelete(false)} />
+          </View>
+        ) : (
+          <Pressable accessibilityRole="button" onPress={() => setConfirmingDelete(true)} style={styles.link}>
+            <AppText style={styles.dangerText}>Șterge contul</AppText>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -86,4 +125,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, gap: 14 },
   error: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
+  link: { minHeight: minTouchSize, justifyContent: 'center', alignSelf: 'flex-start' },
+  linkText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
+  dangerText: { fontFamily: fonts.semibold, fontSize: 14, color: '#FF8A75' },
+  danger: { gap: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
 });

@@ -1,6 +1,6 @@
 <?php
 /**
- * Customer accounts: register, login, password reset, profile.
+ * Customer accounts: register, login, password reset, profile, account deletion.
  *
  * Accounts are regular WooCommerce customers, shared with the website.
  */
@@ -8,6 +8,7 @@
 namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Auth;
+use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
 
 defined( 'ABSPATH' ) || exit;
@@ -135,6 +136,17 @@ class Auth_Controller {
 						),
 					),
 				),
+				array(
+					'methods'             => \WP_REST_Server::DELETABLE,
+					'callback'            => array( $this, 'delete_me' ),
+					'permission_callback' => array( Auth::class, 'require_customer' ),
+					'args'                => array(
+						'password' => array(
+							'type'     => 'string',
+							'required' => true,
+						),
+					),
+				),
 			)
 		);
 	}
@@ -238,6 +250,49 @@ class Auth_Controller {
 		$customer->save();
 
 		return rest_ensure_response( Formatter::customer( $customer ) );
+	}
+
+	/**
+	 * In-app account deletion, required by the App Store and Google Play.
+	 *
+	 * Orders stay in WooCommerce (accounting), detached from the account by WooCommerce itself.
+	 * Personal loyalty coupons go with the account. Staff accounts are never deleted from here.
+	 */
+	public function delete_me( \WP_REST_Request $request ) {
+		$user = wp_get_current_user();
+
+		if ( array_diff( (array) $user->roles, array( 'customer', 'subscriber' ) ) ) {
+			return new \WP_Error( 'mlb_staff_account', 'Acest cont nu se poate șterge din aplicație.', array( 'status' => 403 ) );
+		}
+
+		if ( Auth::is_locked_out( $user->user_email ) ) {
+			return new \WP_Error( 'mlb_too_many_attempts', 'Prea multe încercări. Încearcă din nou peste 15 minute.', array( 'status' => 429 ) );
+		}
+		if ( ! wp_check_password( (string) $request['password'], $user->user_pass, $user->ID ) ) {
+			Auth::record_failed_login( $user->user_email );
+			return new \WP_Error( 'mlb_invalid_password', 'Parola nu este corectă.', array( 'status' => 403 ) );
+		}
+
+		$coupon_ids = get_posts(
+			array(
+				'post_type'      => 'shop_coupon',
+				'post_status'    => 'any',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'meta_key'       => Coupons::CUSTOMER_META, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'meta_value'     => (string) $user->ID, // phpcs:ignore WordPress.DB.SlowDBQuery
+			)
+		);
+		foreach ( $coupon_ids as $coupon_id ) {
+			wp_delete_post( (int) $coupon_id, true );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		if ( ! wp_delete_user( $user->ID ) ) {
+			return new \WP_Error( 'mlb_delete_failed', 'Contul nu a putut fi șters. Încearcă din nou.', array( 'status' => 500 ) );
+		}
+
+		return rest_ensure_response( array( 'deleted' => true ) );
 	}
 
 	/**
