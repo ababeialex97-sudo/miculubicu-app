@@ -1,0 +1,14 @@
+/*
+Theme Name:        Micu' lu' Bicu
+Theme URI:         https://miculubicu.ro
+Description:       Lightweight theme for Micu' lu' Bicu, built for Elementor and WooCommerce. Every section of the site is an Elementor widget, so texts, images, boxes and colors are editable from the Elementor panel.
+Version:           1.0.0
+Requires at least: 6.5
+Tested up to:      6.8
+Requires PHP:      8.1
+Author:            Micu' lu' Bicu
+Text Domain:       mlb-theme
+License:           GPL-2.0-or-later
+*/
+
+/* The real styles live in assets/css/theme.css (this file only carries the theme header). */
