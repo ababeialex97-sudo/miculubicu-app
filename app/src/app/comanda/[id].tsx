@@ -45,7 +45,7 @@ export default function OrderStatusScreen() {
           </AppText>
         </View>
 
-        <AppText variant="title" style={{ fontSize: 30, lineHeight: 34 }}>
+        <AppText variant="title" style={{ fontSize: 32, lineHeight: 33 }}>
           {headline(data.status, data.fulfillment)}
         </AppText>
 
@@ -146,5 +146,5 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   itemText: { fontFamily: fonts.regular, fontSize: 14, color: colors.text },
   discount: { color: colors.accent, fontFamily: fonts.semibold },
-  totalRow: { paddingTop: 6, marginTop: 2, borderTopWidth: 1, borderTopColor: colors.border },
+  totalRow: { paddingTop: 6, marginTop: 2, borderTopWidth: 1, borderTopColor: colors.divider },
 });

@@ -1,28 +1,42 @@
-// Brand palette and typography from the approved mockup (see CLAUDE.md, section 7).
+import type { TextStyle } from 'react-native';
+
+// Brand palette and typography, aligned with the redesigned website (neutral charcoal,
+// ember red and mustard). Text on dark surfaces is always white or light grey.
 export const colors = {
-  background: '#17120F',
-  surface: '#241C17',
-  border: '#3A2E25',
-  bar: '#100C0A',
-  barBorder: '#2E241D',
-  text: '#F6EEE3',
-  textBody: '#D9CCBD',
-  textMuted: '#BFAF9E',
+  background: '#232323',
+  surface: '#2F2F2F',
+  border: '#474747',
+  divider: '#3A3A3A',
+  bar: '#1B1B1B',
+  barBorder: '#3A3A3A',
+  text: '#FFFFFF',
+  textBody: '#D2D2D2',
+  textMuted: '#D2D2D2',
+  textTertiary: '#A9A9A9',
   primary: '#C8321F',
   onPrimary: '#FFFFFF',
   accent: '#F2B705',
-  accentSoft: '#3A2C10',
-  onAccent: '#17120F',
+  accentSoft: '#42391E',
+  onAccent: '#141414',
+  error: '#FF8A75',
+  overlay: 'rgba(35,35,35,0.85)',
 } as const;
 
 // Each weight is its own font family on Android, so weights are picked by family name.
 export const fonts = {
-  heading: 'ZillaSlab_700Bold',
-  regular: 'Figtree_400Regular',
-  medium: 'Figtree_500Medium',
-  semibold: 'Figtree_600SemiBold',
-  bold: 'Figtree_700Bold',
+  heading: 'BarlowCondensed_800ExtraBold',
+  regular: 'Barlow_400Regular',
+  medium: 'Barlow_500Medium',
+  semibold: 'Barlow_600SemiBold',
+  bold: 'Barlow_700Bold',
 } as const;
+
+// Headings: condensed extra-bold, uppercase, like the website.
+export const headingText = {
+  fontFamily: fonts.heading,
+  textTransform: 'uppercase',
+  letterSpacing: 0.3,
+} as const satisfies TextStyle;
 
 // Minimum touch target size (accessibility).
 export const minTouchSize = 44;

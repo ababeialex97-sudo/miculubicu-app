@@ -124,9 +124,9 @@ function ProfileForm({ customer }: { customer: Customer }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, gap: 14 },
-  error: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
+  error: { fontFamily: fonts.medium, fontSize: 13, color: colors.error },
   link: { minHeight: minTouchSize, justifyContent: 'center', alignSelf: 'flex-start' },
   linkText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
-  dangerText: { fontFamily: fonts.semibold, fontSize: 14, color: '#FF8A75' },
+  dangerText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.error },
   danger: { gap: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
 });

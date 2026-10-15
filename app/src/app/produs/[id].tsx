@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   hero: { width: '100%', height: 300, backgroundColor: colors.surface },
   backWrap: { position: 'absolute', top: 0, left: 20 },
-  back: { marginTop: 12, width: minTouchSize, height: minTouchSize, borderRadius: 22, backgroundColor: 'rgba(23,18,15,0.85)', alignItems: 'center', justifyContent: 'center' },
+  back: { marginTop: 12, width: minTouchSize, height: minTouchSize, borderRadius: 22, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' },
   body: { marginTop: -24, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.background, padding: 20, gap: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   tags: { flexDirection: 'row', gap: 8 },
