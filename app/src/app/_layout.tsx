@@ -1,5 +1,5 @@
-import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold } from '@expo-google-fonts/figtree';
-import { ZillaSlab_700Bold } from '@expo-google-fonts/zilla-slab';
+import { Barlow_400Regular, Barlow_500Medium, Barlow_600SemiBold, Barlow_700Bold } from '@expo-google-fonts/barlow';
+import { BarlowCondensed_800ExtraBold } from '@expo-google-fonts/barlow-condensed';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -21,11 +21,11 @@ export default function RootLayout() {
       }),
   );
   const [fontsLoaded, fontError] = useFonts({
-    ZillaSlab_700Bold,
-    Figtree_400Regular,
-    Figtree_500Medium,
-    Figtree_600SemiBold,
-    Figtree_700Bold,
+    BarlowCondensed_800ExtraBold,
+    Barlow_400Regular,
+    Barlow_500Medium,
+    Barlow_600SemiBold,
+    Barlow_700Bold,
   });
   const sessionHydrated = useSession((s) => s.hydrated);
 

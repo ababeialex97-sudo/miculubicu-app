@@ -212,7 +212,7 @@ export default function CartScreen() {
             <TextInput
               accessibilityLabel="Cod promoțional"
               placeholder="Cod promoțional"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textTertiary}
               value={codeInput}
               onChangeText={(text) => {
                 setCodeInput(text);
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   codeButtonLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.accent },
   appliedCode: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 14, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.accent, backgroundColor: colors.surface },
   removeCode: { minHeight: minTouchSize, paddingHorizontal: 14, justifyContent: 'center' },
-  error: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
+  error: { fontFamily: fonts.medium, fontSize: 13, color: colors.error },
   footer: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 14, gap: 8, backgroundColor: colors.bar, borderTopWidth: 1, borderTopColor: colors.barBorder },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2, marginBottom: 6 },

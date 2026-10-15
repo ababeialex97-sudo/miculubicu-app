@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type TextProps } from 'react-native';
 
-import { colors, fonts, minTouchSize } from '@/constants/theme';
+import { colors, fonts, headingText, minTouchSize } from '@/constants/theme';
 
 type Variant = 'title' | 'heading' | 'body' | 'bodyStrong' | 'muted' | 'price' | 'small';
 
@@ -90,7 +90,7 @@ export function Field({ label, error, ...props }: TextInputProps & { label: stri
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={colors.textTertiary}
         {...props}
         style={[styles.input, props.multiline && styles.inputMultiline, error ? styles.inputError : null]}
       />
@@ -131,8 +131,8 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
 }
 
 const textStyles = StyleSheet.create({
-  title: { fontFamily: fonts.heading, fontSize: 28, lineHeight: 32, color: colors.text },
-  heading: { fontFamily: fonts.heading, fontSize: 21, lineHeight: 26, color: colors.text },
+  title: { ...headingText, fontSize: 30, lineHeight: 31, color: colors.text },
+  heading: { ...headingText, fontSize: 22, lineHeight: 24, color: colors.text },
   body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.textBody },
   bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 21, color: colors.text },
   muted: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.textMuted },
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 72, paddingTop: 12, textAlignVertical: 'top' },
   inputError: { borderColor: colors.primary },
-  fieldError: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
+  fieldError: { fontFamily: fonts.medium, fontSize: 13, color: colors.error },
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 16, height: 56 },
   stepperButton: { width: 48, height: 54, alignItems: 'center', justifyContent: 'center' },
   stepperSign: { fontFamily: fonts.bold, fontSize: 22, color: colors.text },
