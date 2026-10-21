@@ -75,8 +75,9 @@ export type Config = {
   payment_methods: { id: string; title: string }[];
   statuses: Record<OrderStatus, string>;
   test_mode: boolean;
-  guest_checkout: boolean;
-  social_login: { google: boolean; apple: boolean };
+  // Missing on sites still running an older mlb-app-api.
+  guest_checkout?: boolean;
+  social_login?: { google: boolean; apple: boolean };
 };
 
 export type Address = {

@@ -33,8 +33,8 @@ export default function AuthScreen() {
   useEffect(() => {
     void appleAvailable().then(setAppleReady);
   }, []);
-  const showGoogle = config.data?.social_login.google === true && googleAvailable();
-  const showApple = config.data?.social_login.apple === true && appleReady;
+  const showGoogle = config.data?.social_login?.google === true && googleAvailable();
+  const showApple = config.data?.social_login?.apple === true && appleReady;
   const Apple = showApple ? loadApple() : null;
 
   const continueWith = async (getCredential: () => Promise<SocialLogin>) => {
