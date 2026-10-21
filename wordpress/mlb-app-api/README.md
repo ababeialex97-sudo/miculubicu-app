@@ -23,14 +23,21 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | GET | `/config` | – | Puncte de lucru, cost livrare, prag livrare gratuită, metode de plată, statusuri |
 | POST | `/auth/register` | – | Cont nou de client WooCommerce; întoarce token + profil |
 | POST | `/auth/login` | – | Autentificare cu email și parolă; întoarce token + profil |
+| POST | `/auth/google` | – | Intrare cu Google: `id_token` de la Google Sign-In; creează contul la prima intrare sau îl leagă de contul cu același email |
+| POST | `/auth/apple` | – | Intrare cu Apple: `identity_token` (+ `first_name`, `last_name` la prima intrare) |
 | POST | `/auth/password-reset` | – | Trimite emailul standard de resetare a parolei |
 | GET / PATCH | `/me` | token | Profilul clientului (nume, telefon, adresă) |
-| DELETE | `/me` | token + parola | Șterge contul (cerință App Store / Google Play): contul și cupoanele personale; comenzile rămân în WooCommerce, fără client. Conturile de personal nu se pot șterge de aici |
+| DELETE | `/me` | token + parola (fără parolă la conturile făcute cu Google/Apple) | Șterge contul (cerință App Store / Google Play): contul și cupoanele personale; comenzile rămân în WooCommerce, fără client. Conturile de personal nu se pot șterge de aici |
 | GET | `/orders` | token | Istoricul comenzilor (paginat: `page`, `per_page`) |
 | POST | `/orders` | token | Plasează o comandă |
 | GET | `/orders/{id}` | token | O comandă, statusul ei și ora fiecărui pas |
+| POST | `/orders/guest` | – | Comandă fără cont: aceleași câmpuri ca `/orders`, plus `first_name` (obligatoriu), `last_name`, `email`; răspunsul conține `guest_token` |
+| GET | `/orders/guest/{id}` | header `X-MLB-Order-Token` | O comandă fără cont |
+| POST | `/orders/guest/lookup` | tokenurile comenzilor | Comenzile fără cont de pe telefon: `{"orders":[{"id":1,"token":"..."}]}` |
+| POST | `/orders/guest/{id}/push-token` | header `X-MLB-Order-Token` | Notificări push pentru o comandă fără cont |
+| POST | `/orders/claim` | token | Mută în cont comenzile fără cont de pe telefon (istoric + ștampile pentru cele deja finalizate) |
 | GET | `/loyalty` | token | Cardul de fidelitate (ștampile) și cupoanele pe care clientul le poate folosi |
-| POST | `/cart/preview` | token | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
+| POST | `/cart/preview` | token opțional | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
 | POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
 | POST / DELETE | `/push-tokens` | token | Înregistrează / șterge tokenul Expo Push al dispozitivului |
@@ -57,6 +64,24 @@ POST /wp-json/mlb/v1/orders
 ```
 
 `client_order_id` (generat în aplicație) face cererea sigură la reîncercare: aceeași valoare întoarce comanda deja creată.
+
+## Comandă fără cont
+
+Clientul poate comanda doar cu prenume, telefon și adresă (emailul e opțional). Comanda e o comandă WooCommerce de oaspete (fără client) și trece prin GrandChef exact ca celelalte.
+
+- Odată cu comanda, aplicația primește un token aleator pe care îl păstrează în telefon; în comandă se salvează doar hash-ul lui (`_mlb_guest_token_hash`). Cu el, telefonul vede statusul comenzii și primește notificări (tokenurile push stau în comandă, `_mlb_push_tokens`).
+- Dacă clientul intră apoi în cont (sau își face unul) pe același telefon, aplicația mută automat comenzile în cont (`/orders/claim`); cele deja finalizate primesc ștampila pe card.
+- Limită: 6 comenzi fără cont pe oră de pe aceeași adresă IP (`CF-Connecting-IP`, site-ul fiind în spatele Cloudflare).
+- Codurile „doar la prima comandă” și recompensele de fidelitate cer cont; codurile promoționale obișnuite merg și fără cont.
+- Se poate opri din **Setări aplicație** › „Comandă fără cont”.
+
+## Intrare cu Google și Apple
+
+Aplicația primește de la Google sau Apple un ID token semnat (JWT RS256). Plugin-ul îl verifică cu cheile publice ale furnizorului (descărcate de la `googleapis.com` / `appleid.apple.com` și ținute 6 ore), apoi verifică emitentul, aplicația căreia i-a fost emis (`aud`) și expirarea.
+
+- Contul se găsește după ID-ul de la furnizor (`_mlb_google_sub` / `_mlb_apple_sub`), apoi după emailul confirmat; altfel se creează un client WooCommerce nou, fără parolă proprie (`_mlb_social_only`). Dacă își setează mai târziu o parolă („Am uitat parola”), poate intra și cu email.
+- Conturile de personal (orice rol în afară de customer/subscriber) nu pot intra așa.
+- În **Setări aplicație** se completează Client ID-ul Google de tip „Web application” (același pe care aplicația îl folosește ca `webClientId`) și Bundle ID-ul iOS pentru Apple (implicit `ro.miculubicu.app`). Un câmp gol ascunde butonul din aplicație.
 
 ## Cum se leagă de GrandChef
 
@@ -94,7 +119,7 @@ O comandă primește cel mult două coduri (de exemplu un cod promoțional și r
 
 ## Notificări push
 
-Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat. Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
+Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat (la comenzile fără cont, la telefonul care a plasat comanda). Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
 
 ```php
 define( 'MLB_APP_API_EXPO_ACCESS_TOKEN', '...' );
@@ -113,6 +138,9 @@ Se editează din **WooCommerce › Setări aplicație**; dedesubt, opțiunile fo
 | `mlb_app_api_test_mode` | `yes` | marchează comenzile cu „COMANDA DE TEST” |
 | `mlb_app_api_delivery_instance_id` | prima metodă `flat_rate` activă | metoda WooCommerce pentru livrare |
 | `mlb_app_api_pickup_instance_id` | prima metodă `free_shipping` activă | metoda WooCommerce pentru ridicare |
+| `mlb_app_api_guest_checkout` | `yes` | comandă fără cont |
+| `mlb_app_api_google_client_ids` | gol (dezactivat) | Client ID-uri Google acceptate, câte unul pe rând |
+| `mlb_app_api_apple_client_ids` | `ro.miculubicu.app` | Bundle ID-uri acceptate pentru Sign in with Apple |
 | `mlb_app_api_loyalty` | activ, 4 comenzi, 10%, 60 de zile | cardul de fidelitate (`enabled`, `required`, `reward_type` `percent`/`fixed`, `reward_amount`, `reward_days`) |
 
 Locația aleasă de client se salvează în comandă (`_mlb_location_id`); rutarea spre serverul GrandChef al locației vine la pasul 6.
@@ -131,4 +159,6 @@ GrandChef nu transmite statusuri, așa că aplicația folosește meta `_mlb_stat
 php wordpress/mlb-app-api/tests/jwt-test.php
 php wordpress/mlb-app-api/tests/push-messages-test.php
 php wordpress/mlb-app-api/tests/loyalty-rules-test.php
+php wordpress/mlb-app-api/tests/id-token-test.php
+php wordpress/mlb-app-api/tests/guest-orders-test.php
 ```

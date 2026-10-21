@@ -49,6 +49,20 @@ class Auth {
 		return true;
 	}
 
+	/**
+	 * Permission callback for routes open to guests that know the customer when a token is sent.
+	 * A bad or expired token is refused, so the app can tell the session is gone.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function optional_customer( \WP_REST_Request $request ) {
+		if ( null === self::bearer_token( $request ) ) {
+			wp_set_current_user( 0 );
+			return true;
+		}
+		return self::require_customer( $request );
+	}
+
 	public static function user_from_request( \WP_REST_Request $request ): ?\WP_User {
 		$token = self::bearer_token( $request );
 		if ( null === $token ) {

@@ -1,6 +1,7 @@
 <?php
 /**
- * Customer orders: place an order, list history, read one order (status).
+ * Orders: place an order (with an account or as a guest), list history, read one order (status),
+ * and move guest orders to an account after logging in.
  *
  * App orders are regular WooCommerce orders. Moving them to `processing` lets the
  * existing GrandChef plugin send them to the restaurant; the app never talks to GrandChef.
@@ -11,6 +12,8 @@ namespace MLB\AppApi\Rest;
 use MLB\AppApi\Auth;
 use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
+use MLB\AppApi\Guest_Orders;
+use MLB\AppApi\Loyalty;
 use MLB\AppApi\Settings;
 use MLB\AppApi\Statuses;
 
@@ -69,6 +72,68 @@ class Orders_Controller {
 				'permission_callback' => array( Auth::class, 'require_customer' ),
 			)
 		);
+
+		// Ordering without an account: the response carries a token that only this device keeps.
+		register_rest_route(
+			$namespace,
+			'/orders/guest',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'create_guest_order' ),
+				'permission_callback' => '__return_true',
+				'args'                => $this->create_args() + self::guest_contact_args(),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/orders/guest/(?P<id>\d+)',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'get_guest_order' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/orders/guest/lookup',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'lookup_guest_orders' ),
+				'permission_callback' => '__return_true',
+				'args'                => array( 'orders' => self::guest_refs_schema() ),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/orders/guest/(?P<id>\d+)/push-token',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'register_guest_push_token' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'token' => array(
+						'type'     => 'string',
+						'required' => true,
+						'pattern'  => Push_Controller::TOKEN_PATTERN,
+					),
+				),
+			)
+		);
+
+		// After logging in, orders placed without an account move to the account (history, loyalty stamps).
+		register_rest_route(
+			$namespace,
+			'/orders/claim',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'claim_guest_orders' ),
+				'permission_callback' => array( Auth::class, 'require_customer' ),
+				'args'                => array( 'orders' => self::guest_refs_schema() ),
+			)
+		);
 	}
 
 	public function list_orders( \WP_REST_Request $request ) {
@@ -113,6 +178,132 @@ class Orders_Controller {
 			}
 		}
 
+		$customer = new \WC_Customer( $customer_id );
+		$order    = $this->place_order(
+			$request,
+			$customer_id,
+			array(
+				'first_name' => $customer->get_first_name(),
+				'last_name'  => $customer->get_last_name(),
+				'email'      => $customer->get_email(),
+			)
+		);
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		return new \WP_REST_Response( Formatter::order( $order ), 201 );
+	}
+
+	public function create_guest_order( \WP_REST_Request $request ) {
+		if ( ! Settings::guest_checkout_enabled() ) {
+			return self::error( 'mlb_guest_disabled', 'Intră în cont ca să comanzi.', 403 );
+		}
+
+		$client_order_id = (string) $request['client_order_id'];
+		if ( '' !== $client_order_id ) {
+			$existing = $this->find_by_client_order_id( 0, $client_order_id );
+			if ( $existing ) {
+				// The first response never reached the app, so its token is lost: hand out a new one.
+				return rest_ensure_response( self::guest_payload( $existing, Guest_Orders::issue_token( $existing ) ) );
+			}
+		}
+
+		$email = trim( (string) $request['email'] );
+		if ( '' !== $email && ! is_email( $email ) ) {
+			return self::error( 'mlb_invalid_email', 'Adresa de email nu pare corectă.' );
+		}
+
+		if ( Guest_Orders::is_rate_limited() ) {
+			return self::error( 'mlb_too_many_orders', 'Prea multe comenzi într-un timp scurt. Sună la restaurant sau încearcă mai târziu.', 429 );
+		}
+
+		$order = $this->place_order(
+			$request,
+			0,
+			array(
+				'first_name' => sanitize_text_field( (string) $request['first_name'] ),
+				'last_name'  => sanitize_text_field( (string) $request['last_name'] ),
+				'email'      => sanitize_email( $email ),
+			)
+		);
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		Guest_Orders::record_order();
+
+		return new \WP_REST_Response( self::guest_payload( $order, Guest_Orders::issue_token( $order ) ), 201 );
+	}
+
+	public function get_guest_order( \WP_REST_Request $request ) {
+		$order = Guest_Orders::find( (int) $request['id'], (string) $request->get_header( Guest_Orders::TOKEN_HEADER ) );
+		if ( ! $order ) {
+			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
+		}
+
+		return rest_ensure_response( Formatter::order( $order ) );
+	}
+
+	/**
+	 * The device's guest orders in one request, newest first. Unknown or claimed orders are left out.
+	 */
+	public function lookup_guest_orders( \WP_REST_Request $request ) {
+		$orders = array();
+		foreach ( (array) $request['orders'] as $ref ) {
+			$order = Guest_Orders::find( (int) $ref['id'], (string) $ref['token'] );
+			if ( $order ) {
+				$orders[] = Formatter::order( $order );
+			}
+		}
+		usort( $orders, static fn ( array $a, array $b ): int => $b['id'] <=> $a['id'] );
+
+		return rest_ensure_response( $orders );
+	}
+
+	public function register_guest_push_token( \WP_REST_Request $request ) {
+		$order = Guest_Orders::find( (int) $request['id'], (string) $request->get_header( Guest_Orders::TOKEN_HEADER ) );
+		if ( ! $order ) {
+			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
+		}
+
+		Guest_Orders::add_push_token( $order, (string) $request['token'] );
+
+		return new \WP_REST_Response( array( 'registered' => true ), 201 );
+	}
+
+	/**
+	 * Moves guest orders to the logged-in customer. Completed ones add their loyalty stamp now.
+	 */
+	public function claim_guest_orders( \WP_REST_Request $request ) {
+		$customer_id = get_current_user_id();
+		$claimed     = array();
+
+		foreach ( (array) $request['orders'] as $ref ) {
+			$order = Guest_Orders::find( (int) $ref['id'], (string) $ref['token'] );
+			if ( ! $order ) {
+				continue;
+			}
+
+			Guest_Orders::attach_to_customer( $order, $customer_id );
+			if ( $order->has_status( 'completed' ) ) {
+				Loyalty::stamp( $order->get_id(), $order );
+			}
+			$claimed[] = $order->get_id();
+		}
+
+		return rest_ensure_response( array( 'claimed' => $claimed ) );
+	}
+
+	/**
+	 * Validates the request, creates the WooCommerce order and hands it to GrandChef.
+	 *
+	 * @param array{first_name: string, last_name: string, email: string} $contact
+	 * @return \WC_Order|\WP_Error
+	 */
+	private function place_order( \WP_REST_Request $request, int $customer_id, array $contact ) {
+		$client_order_id = (string) $request['client_order_id'];
+
 		$location = Settings::get_location( (string) $request['location_id'] );
 		if ( ! $location ) {
 			return self::error( 'mlb_invalid_location', 'Punctul de lucru ales nu există.' );
@@ -142,7 +333,10 @@ class Orders_Controller {
 		}
 
 		// Checked before the order exists, so a wrong code never leaves a half-made order behind.
-		$customer     = new \WC_Customer( $customer_id );
+		$customer = new \WC_Customer( $customer_id );
+		if ( $customer_id <= 0 ) {
+			$customer->set_billing_email( $contact['email'] );
+		}
 		$coupon_codes = Coupons::normalize_codes( $request['coupon_codes'] );
 		if ( $coupon_codes ) {
 			$preview = Coupons::preview( $lines, $coupon_codes, $customer );
@@ -171,14 +365,14 @@ class Orders_Controller {
 		}
 
 		$phone = sanitize_text_field( (string) $request['phone'] );
-		$order->set_billing_first_name( $customer->get_first_name() );
-		$order->set_billing_last_name( $customer->get_last_name() );
-		$order->set_billing_email( $customer->get_email() );
+		$order->set_billing_first_name( $contact['first_name'] );
+		$order->set_billing_last_name( $contact['last_name'] );
+		$order->set_billing_email( $contact['email'] );
 		$order->set_billing_phone( $phone );
 
 		if ( 'delivery' === $fulfillment ) {
-			$order->set_shipping_first_name( $customer->get_first_name() );
-			$order->set_shipping_last_name( $customer->get_last_name() );
+			$order->set_shipping_first_name( $contact['first_name'] );
+			$order->set_shipping_last_name( $contact['last_name'] );
 			$order->set_shipping_address_1( sanitize_text_field( (string) $address['address_1'] ) );
 			$order->set_shipping_address_2( sanitize_text_field( (string) ( $address['address_2'] ?? '' ) ) );
 			$order->set_shipping_city( sanitize_text_field( (string) $address['city'] ) );
@@ -229,7 +423,14 @@ class Orders_Controller {
 		$order->update_status( 'processing', 'Comandă plasată din aplicație.' );
 		ini_set( 'default_socket_timeout', (string) $previous_timeout ); // phpcs:ignore WordPress.PHP.IniSet.Risky
 
-		return new \WP_REST_Response( Formatter::order( wc_get_order( $order->get_id() ) ), 201 );
+		return wc_get_order( $order->get_id() );
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function guest_payload( \WC_Order $order, string $token ): array {
+		return Formatter::order( $order ) + array( 'guest_token' => $token );
 	}
 
 	/**
@@ -316,8 +517,9 @@ class Orders_Controller {
 	private function find_by_client_order_id( int $customer_id, string $client_order_id ): ?\WC_Order {
 		$orders = wc_get_orders(
 			array(
-				'customer_id' => $customer_id,
-				'limit'       => 1,
+				// customer_id 0 would be ignored as "any customer", so guests are checked below.
+				'customer_id' => $customer_id > 0 ? $customer_id : '',
+				'limit'       => 5,
 				'status'      => array_keys( wc_get_order_statuses() ),
 				'meta_query'  => array( // phpcs:ignore WordPress.DB.SlowDBQuery
 					array(
@@ -327,7 +529,12 @@ class Orders_Controller {
 				),
 			)
 		);
-		return $orders[0] ?? null;
+		foreach ( $orders as $order ) {
+			if ( $order->get_customer_id() === $customer_id ) {
+				return $order;
+			}
+		}
+		return null;
 	}
 
 	private static function error( string $code, string $message, int $status = 400 ): \WP_Error {
@@ -382,6 +589,60 @@ class Orders_Controller {
 			'items'    => array(
 				'type'      => 'string',
 				'maxLength' => 50,
+			),
+		);
+	}
+
+	/**
+	 * Who the order is for, when there is no account to take it from.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function guest_contact_args(): array {
+		return array(
+			'first_name' => array(
+				'type'      => 'string',
+				'required'  => true,
+				'minLength' => 1,
+				'maxLength' => 100,
+			),
+			'last_name'  => array(
+				'type'      => 'string',
+				'default'   => '',
+				'maxLength' => 100,
+			),
+			// Optional: only used for the order confirmation and to link the order to an account later.
+			'email'      => array(
+				'type'      => 'string',
+				'default'   => '',
+				'maxLength' => 100,
+			),
+		);
+	}
+
+	/**
+	 * A device's guest orders: each order ID with the token handed out when it was placed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function guest_refs_schema(): array {
+		return array(
+			'type'     => 'array',
+			'required' => true,
+			'maxItems' => Guest_Orders::MAX_PER_DEVICE,
+			'items'    => array(
+				'type'       => 'object',
+				'properties' => array(
+					'id'    => array(
+						'type'     => 'integer',
+						'required' => true,
+					),
+					'token' => array(
+						'type'      => 'string',
+						'required'  => true,
+						'maxLength' => 100,
+					),
+				),
 			),
 		);
 	}

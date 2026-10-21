@@ -1,6 +1,6 @@
 <?php
 /**
- * Customer accounts: register, login, password reset, profile, account deletion.
+ * Customer accounts: register, login (email, Google, Apple), password reset, profile, account deletion.
  *
  * Accounts are regular WooCommerce customers, shared with the website.
  */
@@ -10,6 +10,7 @@ namespace MLB\AppApi\Rest;
 use MLB\AppApi\Auth;
 use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
+use MLB\AppApi\Social_Login;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -70,6 +71,50 @@ class Auth_Controller {
 					'password' => array(
 						'type'     => 'string',
 						'required' => true,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/auth/google',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'login_google' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'id_token' => array(
+						'type'      => 'string',
+						'required'  => true,
+						'maxLength' => 4096,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/auth/apple',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'login_apple' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'identity_token' => array(
+						'type'      => 'string',
+						'required'  => true,
+						'maxLength' => 4096,
+					),
+					'first_name'     => array(
+						'type'      => 'string',
+						'default'   => '',
+						'maxLength' => 100,
+					),
+					'last_name'      => array(
+						'type'      => 'string',
+						'default'   => '',
+						'maxLength' => 100,
 					),
 				),
 			)
@@ -141,9 +186,10 @@ class Auth_Controller {
 					'callback'            => array( $this, 'delete_me' ),
 					'permission_callback' => array( Auth::class, 'require_customer' ),
 					'args'                => array(
+						// Not needed for accounts made with Google or Apple, which have no password.
 						'password' => array(
-							'type'     => 'string',
-							'required' => true,
+							'type'    => 'string',
+							'default' => '',
 						),
 					),
 				),
@@ -197,6 +243,33 @@ class Auth_Controller {
 
 		Auth::clear_failed_logins( $login );
 
+		return rest_ensure_response( $this->session_payload( $user, new \WC_Customer( $user->ID ) ) );
+	}
+
+	public function login_google( \WP_REST_Request $request ) {
+		return $this->social_session( Social_Login::login( 'google', (string) $request['id_token'] ) );
+	}
+
+	/**
+	 * Apple gives the app the customer's name only the first time they sign in, so the app passes it on.
+	 */
+	public function login_apple( \WP_REST_Request $request ) {
+		$names = array_filter(
+			array(
+				'first_name' => trim( (string) $request['first_name'] ),
+				'last_name'  => trim( (string) $request['last_name'] ),
+			)
+		);
+		return $this->social_session( Social_Login::login( 'apple', (string) $request['identity_token'], $names ) );
+	}
+
+	/**
+	 * @param \WP_User|\WP_Error $user
+	 */
+	private function social_session( $user ) {
+		if ( is_wp_error( $user ) ) {
+			return $user;
+		}
 		return rest_ensure_response( $this->session_payload( $user, new \WC_Customer( $user->ID ) ) );
 	}
 
@@ -265,12 +338,15 @@ class Auth_Controller {
 			return new \WP_Error( 'mlb_staff_account', 'Acest cont nu se poate șterge din aplicație.', array( 'status' => 403 ) );
 		}
 
-		if ( Auth::is_locked_out( $user->user_email ) ) {
-			return new \WP_Error( 'mlb_too_many_attempts', 'Prea multe încercări. Încearcă din nou peste 15 minute.', array( 'status' => 429 ) );
-		}
-		if ( ! wp_check_password( (string) $request['password'], $user->user_pass, $user->ID ) ) {
-			Auth::record_failed_login( $user->user_email );
-			return new \WP_Error( 'mlb_invalid_password', 'Parola nu este corectă.', array( 'status' => 403 ) );
+		// Accounts made with Google or Apple have no password to confirm; the valid token is enough.
+		if ( ! Social_Login::is_social_only( $user->ID ) ) {
+			if ( Auth::is_locked_out( $user->user_email ) ) {
+				return new \WP_Error( 'mlb_too_many_attempts', 'Prea multe încercări. Încearcă din nou peste 15 minute.', array( 'status' => 429 ) );
+			}
+			if ( ! wp_check_password( (string) $request['password'], $user->user_pass, $user->ID ) ) {
+				Auth::record_failed_login( $user->user_email );
+				return new \WP_Error( 'mlb_invalid_password', 'Parola nu este corectă.', array( 'status' => 403 ) );
+			}
 		}
 
 		$coupon_ids = get_posts(

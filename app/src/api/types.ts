@@ -75,6 +75,8 @@ export type Config = {
   payment_methods: { id: string; title: string }[];
   statuses: Record<OrderStatus, string>;
   test_mode: boolean;
+  guest_checkout: boolean;
+  social_login: { google: boolean; apple: boolean };
 };
 
 export type Address = {
@@ -89,6 +91,8 @@ export type Customer = {
   first_name: string;
   last_name: string;
   phone: string;
+  // False for accounts made with Google or Apple.
+  has_password: boolean;
   address: Address;
 };
 
@@ -142,6 +146,15 @@ export type NewOrder = {
   items: NewOrderItem[];
   coupon_codes?: string[];
 };
+
+export type NewGuestOrder = NewOrder & {
+  first_name: string;
+  last_name: string;
+  email: string;
+};
+
+/** An order placed without an account, with the token that lets this device follow it. */
+export type GuestOrder = Order & { guest_token: string };
 
 export type NewOrderItem = {
   product_id: number;

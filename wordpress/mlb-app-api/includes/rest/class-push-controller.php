@@ -16,6 +16,8 @@ class Push_Controller {
 
 	public const META_KEY = '_mlb_push_token';
 
+	public const TOKEN_PATTERN = '^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$';
+
 	private const MAX_TOKENS_PER_USER = 10;
 
 	public function register_routes( string $namespace ): void {
@@ -23,7 +25,7 @@ class Push_Controller {
 			'token' => array(
 				'type'     => 'string',
 				'required' => true,
-				'pattern'  => '^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$',
+				'pattern'  => self::TOKEN_PATTERN,
 			),
 		);
 

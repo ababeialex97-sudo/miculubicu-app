@@ -46,12 +46,14 @@ class Formatter {
 	 */
 	public static function customer( \WC_Customer $customer ): array {
 		return array(
-			'id'         => $customer->get_id(),
-			'email'      => $customer->get_email(),
-			'first_name' => $customer->get_first_name(),
-			'last_name'  => $customer->get_last_name(),
-			'phone'      => $customer->get_billing_phone(),
-			'address'    => array(
+			'id'           => $customer->get_id(),
+			'email'        => $customer->get_email(),
+			'first_name'   => $customer->get_first_name(),
+			'last_name'    => $customer->get_last_name(),
+			'phone'        => $customer->get_billing_phone(),
+			// False for accounts made with Google or Apple: deleting them asks for no password.
+			'has_password' => ! Social_Login::is_social_only( $customer->get_id() ),
+			'address'      => array(
 				'address_1' => $customer->get_shipping_address_1(),
 				'address_2' => $customer->get_shipping_address_2(),
 				'city'      => $customer->get_shipping_city(),

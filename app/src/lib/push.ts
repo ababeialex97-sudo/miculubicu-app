@@ -4,7 +4,8 @@ import * as Device from 'expo-device';
 import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { api } from '@/api/client';
+import { ORDER_TOKEN_HEADER, api } from '@/api/client';
+import type { GuestOrderRef } from '@/lib/guest';
 
 const REGISTERED_TOKEN_KEY = 'mlb.pushToken';
 
@@ -35,12 +36,13 @@ export function getNotifications(): typeof NotificationsModule | null {
 }
 
 /**
- * Registers this device for order status notifications with mlb-app-api.
+ * Registers this device for order status notifications with mlb-app-api: for the logged-in account,
+ * or, with `guestOrder`, for one order placed without an account.
  * With `ask`, the system permission prompt is shown if the customer hasn't answered it yet;
  * without it, registration only happens when permission was already granted.
  * Does nothing on web, in Expo Go, on simulators, or before the EAS project ID exists (needed by Expo Push).
  */
-export async function registerForPush({ ask }: { ask: boolean }): Promise<void> {
+export async function registerForPush({ ask, guestOrder }: { ask: boolean; guestOrder?: GuestOrderRef }): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications || !Device.isDevice) {
     return;
@@ -69,6 +71,10 @@ export async function registerForPush({ ask }: { ask: boolean }): Promise<void> 
     }
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    if (guestOrder) {
+      await api(`/orders/guest/${guestOrder.id}/push-token`, { method: 'POST', body: { token }, headers: { [ORDER_TOKEN_HEADER]: guestOrder.token } });
+      return;
+    }
     await api('/push-tokens', { method: 'POST', body: { token }, auth: true });
     await AsyncStorage.setItem(REGISTERED_TOKEN_KEY, token);
   } catch {

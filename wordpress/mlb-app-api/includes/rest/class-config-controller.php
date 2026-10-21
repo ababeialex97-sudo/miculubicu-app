@@ -50,6 +50,11 @@ class Config_Controller {
 				'payment_methods' => $this->payment_methods(),
 				'statuses'        => Statuses::labels(),
 				'test_mode'       => Settings::is_test_mode(),
+				'guest_checkout'  => Settings::guest_checkout_enabled(),
+				'social_login'    => array(
+					'google' => ! empty( Settings::google_client_ids() ),
+					'apple'  => ! empty( Settings::apple_client_ids() ),
+				),
 			)
 		);
 	}
