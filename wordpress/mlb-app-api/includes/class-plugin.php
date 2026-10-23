@@ -31,6 +31,7 @@ class Plugin {
 		Order_Status::init();
 		Coupons::init();
 		Loyalty::init();
+		GrandChef_Diagnostics::init();
 
 		if ( is_admin() ) {
 			Admin\Orders_Page::init();
