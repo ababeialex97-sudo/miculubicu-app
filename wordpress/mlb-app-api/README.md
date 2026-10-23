@@ -95,7 +95,7 @@ Aplicația primește de la Google sau Apple un ID token semnat (JWT RS256). Plug
 - Livrarea folosește metoda `flat_rate` din zona de livrare, iar ridicarea metoda `free_shipping`, cu titlurile lor exacte (GrandChef asociază după titlu). Livrarea gratuită peste prag rămâne pe metoda de livrare, cu cost 0.
 - Înainte de trimiterea spre GrandChef, `default_socket_timeout` e setat la 10 secunde, ca o problemă de rețea să nu blocheze cererea până la 504.
 - După fiecare trimitere spre GrandChef (din aplicație sau de pe site) plugin-ul scrie o notă în comandă: „GrandChef: trimisă în X s, comanda GrandChef #…” sau „GrandChef: NETRIMISĂ…”, cu avertismentele PHP apărute (conexiune refuzată, timeout etc.). Același text ajunge în WooCommerce › Stare › Jurnale, sursa `mlb-grandchef`.
-- Plugin-ul GrandChef nu mai retrimite o comandă odată marcată (`_added_to_gc`), nici dacă trimiterea a eșuat. Pentru o comandă „În procesare” fără număr GrandChef, în pagina comenzii apare acțiunea „Retrimite la GrandChef”.
+- Plugin-ul GrandChef nu mai retrimite o comandă odată marcată (`_added_to_gc`), nici dacă trimiterea a eșuat. Pentru o comandă „În procesare” fără număr GrandChef, în pagina comenzii apare acțiunea „Retrimite la GrandChef”. O trimitere eșuată se reîncearcă automat de 3 ori, la 2 minute (Action Scheduler).
 - În modul de test (implicit activ) observația comenzii începe cu „COMANDA DE TEST”.
 
 ## Panoul pentru personal

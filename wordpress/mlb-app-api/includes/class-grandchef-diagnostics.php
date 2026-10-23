@@ -6,6 +6,8 @@
  *
  * Also adds "Retrimite la GrandChef" to the order actions: the GrandChef plugin marks an order
  * as handled even when the send failed, and then skips it on every later status change.
+ * A failed send is retried automatically a few times, since the GrandChef server sometimes
+ * doesn't answer and the same order goes through minutes later.
  */
 
 namespace MLB\AppApi;
@@ -36,11 +38,17 @@ class GrandChef_Diagnostics {
 
 	private const RESEND_ACTION = 'mlb_resend_grandchef';
 
+	private const RETRY_HOOK     = 'mlb_grandchef_retry';
+	private const RETRY_META     = '_mlb_gc_retries';
+	private const MAX_RETRIES    = 3;
+	private const RETRY_DELAY    = 2 * MINUTE_IN_SECONDS;
+
 	public static function init(): void {
 		add_action( self::HOOK, array( self::class, 'before' ), 1 );
 		add_action( self::HOOK, array( self::class, 'after' ), PHP_INT_MAX );
 		add_filter( 'woocommerce_order_actions', array( self::class, 'order_actions' ), 10, 2 );
 		add_action( 'woocommerce_order_action_' . self::RESEND_ACTION, array( self::class, 'resend' ) );
+		add_action( self::RETRY_HOOK, array( self::class, 'retry' ) );
 	}
 
 	/**
@@ -69,8 +77,30 @@ class GrandChef_Diagnostics {
 		return $actions;
 	}
 
+	/**
+	 * Staff resend: automatic retries start over if this one fails too.
+	 */
 	public static function resend( \WC_Order $order ): void {
+		$order->delete_meta_data( self::RETRY_META );
+		self::send_again( $order, 'Retrimisă la GrandChef de ' . wp_get_current_user()->display_name . '.' );
+	}
+
+	/**
+	 * @param int $order_id
+	 */
+	public static function retry( $order_id ): void {
+		$order = wc_get_order( (int) $order_id );
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+		$attempt = (int) $order->get_meta( self::RETRY_META ) + 1;
+		$order->update_meta_data( self::RETRY_META, $attempt );
+		self::send_again( $order, sprintf( 'Retrimisă automat la GrandChef (încercarea %d din %d).', $attempt, self::MAX_RETRIES ) );
+	}
+
+	private static function send_again( \WC_Order $order, string $note ): void {
 		if ( ! $order->has_status( 'processing' ) || '' !== self::meta( $order, '_gc_order_id' ) ) {
+			$order->save();
 			return;
 		}
 
@@ -79,7 +109,7 @@ class GrandChef_Diagnostics {
 			$order->delete_meta_data( $key );
 		}
 		$order->save();
-		$order->add_order_note( 'Retrimisă la GrandChef de ' . wp_get_current_user()->display_name . '.' );
+		$order->add_order_note( $note );
 
 		self::with_timeout(
 			static function () use ( $order ): void {
@@ -137,12 +167,31 @@ class GrandChef_Diagnostics {
 				}
 			}
 			$details = array_merge( $details, self::$warnings );
-			$note    = sprintf( 'GrandChef: NETRIMISĂ după %s s.', $seconds ) . ( $details ? ' Detalii: ' . implode( ' | ', $details ) : ' Plugin-ul GrandChef nu a raportat nicio eroare.' );
+			$note    = sprintf( 'GrandChef: NETRIMISĂ după %s s.', $seconds ) . ( $details ? ' Detalii: ' . implode( ' | ', $details ) . '.' : ' Plugin-ul GrandChef nu a raportat nicio eroare.' );
+			$note   .= self::schedule_retry( $order );
 		}
 
 		$order->add_order_note( $note );
 		wc_get_logger()->info( 'Order #' . $order->get_id() . ': ' . $note, array( 'source' => 'mlb-grandchef' ) );
 		self::$started = 0.0;
+	}
+
+	/**
+	 * @return string What happens next, for the order note.
+	 */
+	private static function schedule_retry( \WC_Order $order ): string {
+		if ( ! function_exists( 'as_schedule_single_action' ) || ! $order->has_status( 'processing' ) ) {
+			return '';
+		}
+		if ( (int) $order->get_meta( self::RETRY_META ) >= self::MAX_RETRIES ) {
+			return ' Reîncercările automate s-au terminat: folosește „Retrimite la GrandChef” sau sună în bucătărie.';
+		}
+
+		$args = array( 'order_id' => $order->get_id() );
+		if ( ! as_next_scheduled_action( self::RETRY_HOOK, $args, 'mlb-app-api' ) ) {
+			as_schedule_single_action( time() + self::RETRY_DELAY, self::RETRY_HOOK, $args, 'mlb-app-api' );
+		}
+		return sprintf( ' Reîncerc automat în %d minute.', self::RETRY_DELAY / MINUTE_IN_SECONDS );
 	}
 
 	public static function on_shutdown(): void {
