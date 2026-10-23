@@ -3,6 +3,9 @@
  * Writes an order note after each hand-off to GrandChef: how long it took, whether the GrandChef
  * plugin got an order ID back, and the PHP warnings raised on the way (connection refused,
  * timeouts...). The GrandChef plugin itself doesn't say why an order wasn't added.
+ *
+ * Also adds "Retrimite la GrandChef" to the order actions: the GrandChef plugin marks an order
+ * as handled even when the send failed, and then skips it on every later status change.
  */
 
 namespace MLB\AppApi;
@@ -21,9 +24,68 @@ class GrandChef_Diagnostics {
 
 	private static bool $handler_set = false;
 
+	/**
+	 * Seconds before a GrandChef connection gives up. The GrandChef plugin calls fsockopen()
+	 * without a timeout, so without this a network problem hangs the request until a 504.
+	 * The GrandChef server sometimes takes more than 10 seconds to answer a single call.
+	 */
+	private const SOCKET_TIMEOUT = 25;
+
+	/** Meta the GrandChef plugin writes on the order; it skips orders that have _added_to_gc. */
+	private const GRANDCHEF_META = array( '_added_to_gc', '_gc_order_success', '_gc_order_id' );
+
+	private const RESEND_ACTION = 'mlb_resend_grandchef';
+
 	public static function init(): void {
 		add_action( self::HOOK, array( self::class, 'before' ), 1 );
 		add_action( self::HOOK, array( self::class, 'after' ), PHP_INT_MAX );
+		add_filter( 'woocommerce_order_actions', array( self::class, 'order_actions' ), 10, 2 );
+		add_action( 'woocommerce_order_action_' . self::RESEND_ACTION, array( self::class, 'resend' ) );
+	}
+
+	/**
+	 * Runs the hand-off (anything that moves an order to processing) with the socket timeout.
+	 */
+	public static function with_timeout( callable $send ): void {
+		$previous = ini_get( 'default_socket_timeout' );
+		ini_set( 'default_socket_timeout', (string) self::SOCKET_TIMEOUT ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+		try {
+			$send();
+		} finally {
+			ini_set( 'default_socket_timeout', (string) $previous ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+		}
+	}
+
+	/**
+	 * @param array<string, string> $actions
+	 * @param \WC_Order|null       $order
+	 * @return array<string, string>
+	 */
+	public static function order_actions( $actions, $order = null ) {
+		$order = $order ?? ( $GLOBALS['theorder'] ?? null ); // Older WooCommerce passes only $actions.
+		if ( $order instanceof \WC_Order && $order->has_status( 'processing' ) && '' === self::meta( $order, '_gc_order_id' ) ) {
+			$actions[ self::RESEND_ACTION ] = 'Retrimite la GrandChef';
+		}
+		return $actions;
+	}
+
+	public static function resend( \WC_Order $order ): void {
+		if ( ! $order->has_status( 'processing' ) || '' !== self::meta( $order, '_gc_order_id' ) ) {
+			return;
+		}
+
+		foreach ( self::GRANDCHEF_META as $key ) {
+			delete_post_meta( $order->get_id(), $key );
+			$order->delete_meta_data( $key );
+		}
+		$order->save();
+		$order->add_order_note( 'Retrimisă la GrandChef de ' . wp_get_current_user()->display_name . '.' );
+
+		self::with_timeout(
+			static function () use ( $order ): void {
+				do_action( self::HOOK, $order->get_id(), $order ); // phpcs:ignore WooCommerce.Commenting.CommentHooks
+			}
+		);
 	}
 
 	public static function before(): void {

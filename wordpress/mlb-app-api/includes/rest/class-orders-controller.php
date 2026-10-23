@@ -28,13 +28,6 @@ class Orders_Controller {
 	/** Payment methods the app can use: cash, or card to the courier / at the counter. */
 	public const PAYMENT_METHODS = array( 'cod', 'mlb_card' ); // mlb_card: Card_Gateway::ID.
 
-	/**
-	 * Seconds before a GrandChef connection gives up. The GrandChef plugin calls fsockopen()
-	 * without a timeout, so without this a network problem hangs the request until a 504.
-	 * The GrandChef server sometimes takes more than 10 seconds to answer a single call.
-	 */
-	private const GRANDCHEF_SOCKET_TIMEOUT = 25;
-
 	public function register_routes( string $namespace ): void {
 		register_rest_route(
 			$namespace,
@@ -422,10 +415,11 @@ class Orders_Controller {
 		do_action( 'mlb_app_api_order_created', $order, $request );
 
 		// Moving to processing triggers the GrandChef plugin, which sends the order to the restaurant.
-		$previous_timeout = ini_get( 'default_socket_timeout' );
-		ini_set( 'default_socket_timeout', (string) self::GRANDCHEF_SOCKET_TIMEOUT ); // phpcs:ignore WordPress.PHP.IniSet.Risky
-		$order->update_status( 'processing', 'Comandă plasată din aplicație.' );
-		ini_set( 'default_socket_timeout', (string) $previous_timeout ); // phpcs:ignore WordPress.PHP.IniSet.Risky
+		GrandChef_Diagnostics::with_timeout(
+			static function () use ( $order ): void {
+				$order->update_status( 'processing', 'Comandă plasată din aplicație.' );
+			}
+		);
 
 		return wc_get_order( $order->get_id() );
 	}
