@@ -31,8 +31,9 @@ class Orders_Controller {
 	/**
 	 * Seconds before a GrandChef connection gives up. The GrandChef plugin calls fsockopen()
 	 * without a timeout, so without this a network problem hangs the request until a 504.
+	 * The GrandChef server sometimes takes more than 10 seconds to answer a single call.
 	 */
-	private const GRANDCHEF_SOCKET_TIMEOUT = 10;
+	private const GRANDCHEF_SOCKET_TIMEOUT = 25;
 
 	public function register_routes( string $namespace ): void {
 		register_rest_route(

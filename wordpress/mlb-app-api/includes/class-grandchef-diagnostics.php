@@ -33,7 +33,9 @@ class GrandChef_Diagnostics {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- diagnostics only, restored in after().
 		set_error_handler(
 			static function ( int $errno, string $message ): bool {
-				if ( count( self::$warnings ) < 5 ) {
+				// The GrandChef plugin's utf8_encode() deprecations are harmless noise.
+				$deprecated = in_array( $errno, array( E_DEPRECATED, E_USER_DEPRECATED ), true );
+				if ( ! $deprecated && count( self::$warnings ) < 5 ) {
 					self::$warnings[] = $message;
 				}
 				return false; // Let PHP and WordPress handle it as usual.
