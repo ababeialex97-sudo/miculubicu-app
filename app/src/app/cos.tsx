@@ -15,6 +15,7 @@ import { randomId } from '@/lib/id';
 import { registerForPush } from '@/lib/push';
 import { resolveLocation } from '@/lib/location';
 import { formatBani, toBani } from '@/lib/money';
+import { paymentLabel } from '@/lib/payment';
 import { useCart } from '@/store/cart';
 import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
@@ -41,7 +42,9 @@ export default function CartScreen() {
   const clientOrderId = useRef(randomId());
 
   const location = resolveLocation(config.data, cart.locationId);
-  const paymentMethod = config.data?.payment_methods[0];
+  const paymentMethods = config.data?.payment_methods ?? [];
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const paymentMethod = paymentMethods.find((m) => m.id === paymentId) ?? paymentMethods[0];
   const isDelivery = cart.fulfillment === 'delivery';
 
   const [codeInput, setCodeInput] = useState('');
@@ -303,9 +306,17 @@ export default function CartScreen() {
           <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
             Plata
           </AppText>
-          <View style={styles.payment}>
-            <AppText variant="bodyStrong">{isDelivery ? 'Numerar la livrare' : 'Numerar la ridicare'}</AppText>
-          </View>
+          {paymentMethods.length > 1 && paymentMethod ? (
+            <Segmented
+              value={paymentMethod.id}
+              onChange={setPaymentId}
+              options={paymentMethods.map((m) => ({ value: m.id, label: paymentLabel(m.id, cart.fulfillment) }))}
+            />
+          ) : (
+            <View style={styles.payment}>
+              <AppText variant="bodyStrong">{paymentLabel(paymentMethod?.id ?? 'cod', cart.fulfillment)}</AppText>
+            </View>
+          )}
           {errors.payment ? <AppText style={styles.error}>{errors.payment}</AppText> : null}
         </View>
       </ScrollView>

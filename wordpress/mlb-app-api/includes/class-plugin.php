@@ -18,6 +18,15 @@ class Plugin {
 		}
 
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
+
+		require_once MLB_APP_API_DIR . '/includes/class-card-gateway.php';
+		add_filter(
+			'woocommerce_payment_gateways',
+			static function ( array $gateways ): array {
+				$gateways[] = Card_Gateway::class;
+				return $gateways;
+			}
+		);
 		Product_Fields::init();
 		Order_Status::init();
 		Coupons::init();

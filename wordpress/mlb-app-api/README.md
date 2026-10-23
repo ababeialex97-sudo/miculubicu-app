@@ -65,6 +65,10 @@ POST /wp-json/mlb/v1/orders
 
 `client_order_id` (generat în aplicație) face cererea sigură la reîncercare: aceeași valoare întoarce comanda deja creată.
 
+## Plata cu cardul la livrare / la ridicare
+
+Plugin-ul adaugă metoda de plată WooCommerce „Card la livrare / la ridicare” (`mlb_card`), dezactivată implicit: clientul plătește cu cardul la curier sau la casă, nimic online. Se activează din WooCommerce › Setări › Plăți și se asociază în pagina GrandChef cu tipul lor de plată pentru card. Când e activă, aplicația îi lasă clientului de ales între numerar și card.
+
 ## Comandă fără cont
 
 Clientul poate comanda doar cu prenume, telefon și adresă (emailul e opțional). Comanda e o comandă WooCommerce de oaspete (fără client) și trece prin GrandChef exact ca celelalte.

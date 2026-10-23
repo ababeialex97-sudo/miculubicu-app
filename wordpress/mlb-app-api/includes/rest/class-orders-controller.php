@@ -25,6 +25,9 @@ class Orders_Controller {
 	private const MAX_QUANTITY     = 50;
 	private const PREFERENCES_META = 'Preferinte'; // Exact key read by the GrandChef plugin.
 
+	/** Payment methods the app can use: cash, or card to the courier / at the counter. */
+	public const PAYMENT_METHODS = array( 'cod', 'mlb_card' ); // mlb_card: Card_Gateway::ID.
+
 	/**
 	 * Seconds before a GrandChef connection gives up. The GrandChef plugin calls fsockopen()
 	 * without a timeout, so without this a network problem hangs the request until a 504.
@@ -694,7 +697,7 @@ class Orders_Controller {
 			),
 			'payment_method'  => array(
 				'type'    => 'string',
-				'enum'    => array( 'cod' ),
+				'enum'    => self::PAYMENT_METHODS,
 				'default' => 'cod',
 			),
 			'client_order_id' => array(
