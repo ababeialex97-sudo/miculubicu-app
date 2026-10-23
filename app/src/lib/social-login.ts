@@ -1,4 +1,4 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import type * as AppleAuthenticationModule from 'expo-apple-authentication';
 import { Platform } from 'react-native';
 
@@ -12,7 +12,7 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 
 // Both need native code that Expo Go doesn't have (and Expo Go's own bundle ID would not match).
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo = isRunningInExpoGo();
 
 /** Thrown when the customer closes the Google or Apple sheet: nothing to report. */
 export class SignInCancelled extends Error {}

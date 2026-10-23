@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -11,17 +12,30 @@ const REGISTERED_TOKEN_KEY = 'mlb.pushToken';
 
 // Expo Go dropped push notifications on Android (SDK 53) and throws as soon as
 // expo-notifications is loaded, so the module is only loaded in real builds.
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo = isRunningInExpoGo();
 let notificationsModule: typeof NotificationsModule | null = null;
+let notificationsUnavailable = false;
 
 /** expo-notifications, or null where push isn't available (web, Expo Go). */
 export function getNotifications(): typeof NotificationsModule | null {
-  if (Platform.OS === 'web' || isExpoGo) {
+  if (Platform.OS === 'web' || isExpoGo || notificationsUnavailable) {
     return null;
   }
   if (!notificationsModule) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    notificationsModule = require('expo-notifications') as typeof NotificationsModule;
+    let loaded: (typeof NotificationsModule & { default?: typeof NotificationsModule }) | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      loaded = require('expo-notifications');
+    } catch {
+      loaded = undefined;
+    }
+    const module = loaded?.setNotificationHandler ? loaded : loaded?.default;
+    if (!module?.setNotificationHandler) {
+      // The app keeps working without status notifications.
+      notificationsUnavailable = true;
+      return null;
+    }
+    notificationsModule = module;
     // Status notifications are shown even while the app is open.
     notificationsModule.setNotificationHandler({
       handleNotification: async () => ({
