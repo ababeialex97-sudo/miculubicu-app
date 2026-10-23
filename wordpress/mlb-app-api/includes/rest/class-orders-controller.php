@@ -12,6 +12,7 @@ namespace MLB\AppApi\Rest;
 use MLB\AppApi\Auth;
 use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
+use MLB\AppApi\GrandChef_Diagnostics;
 use MLB\AppApi\Guest_Orders;
 use MLB\AppApi\Loyalty;
 use MLB\AppApi\Settings;

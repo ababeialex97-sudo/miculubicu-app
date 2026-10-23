@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MLB App API
  * Description:       REST API for the Micu' lu' Bicu mobile app (menu, customer auth, orders, push tokens).
- * Version:           0.2.4
+ * Version:           0.2.5
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MLB_APP_API_VERSION', '0.2.4' );
+define( 'MLB_APP_API_VERSION', '0.2.5' );
 define( 'MLB_APP_API_FILE', __FILE__ );
 define( 'MLB_APP_API_DIR', __DIR__ );
 
