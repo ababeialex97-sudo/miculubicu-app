@@ -245,7 +245,7 @@
 				] )
 				: null,
 			el( 'p', { class: 'mlb-total' }, [
-				el( 'span', { text: 'Total, numerar' } ),
+				el( 'span', { text: 'mlb_card' === order.payment_method ? 'Total, card' : 'Total, numerar' } ),
 				el( 'strong', { text: money( order.total ) } ),
 			] ),
 			el( 'p', { class: order.grandchef.sent ? 'mlb-gc mlb-gc-ok' : 'mlb-gc mlb-gc-missing' }, [

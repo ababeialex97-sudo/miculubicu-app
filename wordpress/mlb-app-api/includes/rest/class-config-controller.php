@@ -50,12 +50,17 @@ class Config_Controller {
 				'payment_methods' => $this->payment_methods(),
 				'statuses'        => Statuses::labels(),
 				'test_mode'       => Settings::is_test_mode(),
+				'guest_checkout'  => Settings::guest_checkout_enabled(),
+				'social_login'    => array(
+					'google' => ! empty( Settings::google_client_ids() ),
+					'apple'  => ! empty( Settings::apple_client_ids() ),
+				),
 			)
 		);
 	}
 
 	/**
-	 * Only cash on delivery/pickup for now; online card payment is a separate offer.
+	 * Offline methods only: cash or card on delivery/pickup. Online card payment is a separate offer.
 	 *
 	 * @return array<int, array<string, string>>
 	 */
@@ -63,11 +68,13 @@ class Config_Controller {
 		$gateways = WC()->payment_gateways()->payment_gateways();
 		$methods  = array();
 
-		if ( isset( $gateways['cod'] ) && 'yes' === $gateways['cod']->enabled ) {
-			$methods[] = array(
-				'id'    => 'cod',
-				'title' => $gateways['cod']->get_title(),
-			);
+		foreach ( Orders_Controller::PAYMENT_METHODS as $id ) {
+			if ( isset( $gateways[ $id ] ) && 'yes' === $gateways[ $id ]->enabled ) {
+				$methods[] = array(
+					'id'    => $id,
+					'title' => $gateways[ $id ]->get_title(),
+				);
+			}
 		}
 
 		return $methods;

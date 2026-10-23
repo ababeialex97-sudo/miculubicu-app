@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MLB App API
  * Description:       REST API for the Micu' lu' Bicu mobile app (menu, customer auth, orders, push tokens).
- * Version:           0.1.0
+ * Version:           0.2.5
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MLB_APP_API_VERSION', '0.1.0' );
+define( 'MLB_APP_API_VERSION', '0.2.5' );
 define( 'MLB_APP_API_FILE', __FILE__ );
 define( 'MLB_APP_API_DIR', __DIR__ );
 
@@ -20,6 +20,9 @@ require_once __DIR__ . '/includes/class-jwt.php';
 require_once __DIR__ . '/includes/class-settings.php';
 require_once __DIR__ . '/includes/class-statuses.php';
 require_once __DIR__ . '/includes/class-auth.php';
+require_once __DIR__ . '/includes/class-id-token.php';
+require_once __DIR__ . '/includes/class-social-login.php';
+require_once __DIR__ . '/includes/class-guest-orders.php';
 require_once __DIR__ . '/includes/class-formatter.php';
 require_once __DIR__ . '/includes/class-product-fields.php';
 require_once __DIR__ . '/includes/class-push-messages.php';
@@ -28,6 +31,7 @@ require_once __DIR__ . '/includes/class-order-status.php';
 require_once __DIR__ . '/includes/class-loyalty-rules.php';
 require_once __DIR__ . '/includes/class-coupons.php';
 require_once __DIR__ . '/includes/class-loyalty.php';
+require_once __DIR__ . '/includes/class-grandchef-diagnostics.php';
 require_once __DIR__ . '/includes/rest/class-auth-controller.php';
 require_once __DIR__ . '/includes/rest/class-menu-controller.php';
 require_once __DIR__ . '/includes/rest/class-config-controller.php';

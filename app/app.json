@@ -16,7 +16,8 @@
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ro",
         "CFBundleAllowMixedLocalizations": true
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +55,8 @@
           "color": "#C8321F",
           "icon": "./assets/images/notification-icon.png"
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

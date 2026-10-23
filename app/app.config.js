@@ -8,11 +8,19 @@ module.exports = ({ config }) => {
   // environment variable; locally from ./google-services.json when present.
   const googleServicesFile = process.env.GOOGLE_SERVICES_JSON ?? (fs.existsSync(path.join(__dirname, 'google-services.json')) ? './google-services.json' : undefined);
 
+  // "Continuă cu Google" on iOS needs the iOS OAuth client's reversed ID as a URL scheme.
+  // Without the client ID the native plugin is left out and the app hides the button.
+  const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  const googlePlugin = googleIosClientId
+    ? [['@react-native-google-signin/google-signin', { iosUrlScheme: `com.googleusercontent.apps.${googleIosClientId.replace('.apps.googleusercontent.com', '')}` }]]
+    : [];
+
   return {
     ...config,
     android: {
       ...config.android,
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
+    plugins: [...(config.plugins ?? []), ...googlePlugin],
   };
 };

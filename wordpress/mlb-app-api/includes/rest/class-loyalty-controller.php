@@ -1,6 +1,6 @@
 <?php
 /**
- * Loyalty card and coupons for the logged-in customer, and the cart price check.
+ * Loyalty card and coupons for the logged-in customer, and the cart price check (guests too).
  */
 
 namespace MLB\AppApi\Rest;
@@ -33,7 +33,7 @@ class Loyalty_Controller {
 			array(
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'preview' ),
-				'permission_callback' => array( Auth::class, 'require_customer' ),
+				'permission_callback' => array( Auth::class, 'optional_customer' ),
 				'args'                => array(
 					'items'        => Orders_Controller::items_schema(),
 					'coupon_codes' => Orders_Controller::coupon_codes_schema(),

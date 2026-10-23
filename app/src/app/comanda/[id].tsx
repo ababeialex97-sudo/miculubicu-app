@@ -7,6 +7,7 @@ import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, LoadError } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { formatPrice } from '@/lib/money';
+import { paymentLabel } from '@/lib/payment';
 import { formatTime, headline, timeline } from '@/lib/status';
 
 export default function OrderStatusScreen() {
@@ -109,7 +110,7 @@ export default function OrderStatusScreen() {
             </View>
           ) : null}
           <View style={[styles.itemRow, styles.totalRow]}>
-            <AppText style={[styles.itemText, { fontFamily: fonts.bold }]}>Total · {data.fulfillment === 'pickup' ? 'numerar la ridicare' : 'numerar la livrare'}</AppText>
+            <AppText style={[styles.itemText, { fontFamily: fonts.bold }]}>Total · {paymentLabel(data.payment_method, data.fulfillment).toLowerCase()}</AppText>
             <AppText style={[styles.itemText, { fontFamily: fonts.bold }]}>{formatPrice(data.total)}</AppText>
           </View>
         </View>

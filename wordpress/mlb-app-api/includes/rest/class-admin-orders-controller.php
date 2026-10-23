@@ -118,11 +118,23 @@ class Admin_Orders_Controller {
 				'note'          => $order->get_customer_note(),
 				'next_statuses' => Statuses::next( $data['status'], (string) $data['fulfillment'] ),
 				'grandchef'     => array(
-					'sent'     => '' !== (string) $order->get_meta( '_gc_order_id' ),
-					'order_id' => (string) $order->get_meta( '_gc_order_id' ),
+					'sent'     => '' !== self::grandchef_order_id( $order ),
+					'order_id' => self::grandchef_order_id( $order ),
 				),
 				'edit_url'      => $order->get_edit_order_url(),
 			)
 		);
+	}
+
+	/**
+	 * The GrandChef plugin writes its meta with update_post_meta(), which with HPOS does not
+	 * reach the order's own meta table, so the post meta is checked as well.
+	 */
+	private static function grandchef_order_id( \WC_Order $order ): string {
+		$id = (string) $order->get_meta( '_gc_order_id' );
+		if ( '' === $id ) {
+			$id = (string) get_post_meta( $order->get_id(), '_gc_order_id', true );
+		}
+		return $id;
 	}
 }

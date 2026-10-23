@@ -2,22 +2,26 @@ import { Link, router } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useMenu, useOrders } from '@/api/hooks';
+import { useGuestOrderList, useMenu, useOrders } from '@/api/hooks';
 import type { Order } from '@/api/types';
 import { AppText, Button, Centered, LoadError } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 import { formatPrice } from '@/lib/money';
 import { isActive } from '@/lib/status';
 import { useCart } from '@/store/cart';
+import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
 
 export default function OrdersScreen() {
   const token = useSession((s) => s.token);
-  const orders = useOrders();
+  const hasGuestOrders = useGuestOrders((s) => s.orders.length > 0);
+  const accountOrders = useOrders();
+  const guestOrders = useGuestOrderList();
+  const orders = token ? accountOrders : guestOrders;
   const menu = useMenu();
   const add = useCart((s) => s.add);
 
-  if (!token) {
+  if (!token && !hasGuestOrders) {
     return (
       <Centered>
         <AppText variant="title">Comenzile tale</AppText>
@@ -70,7 +74,17 @@ export default function OrdersScreen() {
         data={orders.data}
         keyExtractor={(order) => String(order.id)}
         contentContainerStyle={styles.content}
-        ListHeaderComponent={<AppText variant="title">Comenzile tale</AppText>}
+        ListHeaderComponent={
+          <View style={{ gap: 12 }}>
+            <AppText variant="title">Comenzile tale</AppText>
+            {token ? null : (
+              <View style={styles.guestCard}>
+                <AppText>Comenzile făcute fără cont de pe acest telefon. Intră în cont ca să le păstrezi și să primești ștampile pentru ele.</AppText>
+                <Button label="Intră în cont" variant="outline" onPress={() => router.push('/autentificare')} />
+              </View>
+            )}
+          </View>
+        }
         ListEmptyComponent={<AppText>Nu ai încă nicio comandă.</AppText>}
         refreshing={orders.isRefetching}
         onRefresh={() => void orders.refetch()}
@@ -101,6 +115,7 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, gap: 12 },
+  guestCard: { padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, gap: 12 },
   card: { padding: 14, borderRadius: 16, backgroundColor: colors.surface, gap: 12 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   status: { fontFamily: fonts.semibold, fontSize: 13, color: colors.textMuted },
