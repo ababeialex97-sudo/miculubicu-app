@@ -60,6 +60,11 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "description": "Comandă mici, fripturi pe jar și produse din abator propriu de la Micu' lu' Bicu, Vaslui."
+    "description": "Comandă mici, fripturi pe jar și produse din abator propriu de la Micu' lu' Bicu, Vaslui.",
+    "extra": {
+      "eas": {
+        "projectId": "9c9307c0-a659-4117-8707-7d4041e21795"
+      }
+    }
   }
 }
