@@ -7,7 +7,7 @@ import { useConfig, useLoyalty } from '@/api/hooks';
 import type { Coupon } from '@/api/types';
 import { Icon } from '@/components/icon';
 import { AppText, Button, LoadError } from '@/components/ui';
-import { colors, fonts, minTouchSize } from '@/constants/theme';
+import { colors, fonts, headingText, minTouchSize } from '@/constants/theme';
 import { resolveLocation } from '@/lib/location';
 import { couponSubtitle, couponTitle, stampSlots } from '@/lib/loyalty';
 import { formatPrice, toBani } from '@/lib/money';
@@ -163,11 +163,11 @@ function CouponRow({ coupon }: { coupon: Coupon }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, paddingBottom: 40, gap: 18 },
-  title: { fontSize: 30 },
+  title: { fontSize: 32, lineHeight: 33 },
   sectionTitle: { fontSize: 21 },
   card: { padding: 20, borderRadius: 20, backgroundColor: colors.accent, gap: 16 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  cardTitle: { fontFamily: fonts.heading, fontSize: 22, color: colors.onAccent },
+  cardTitle: { ...headingText, fontSize: 24, lineHeight: 26, color: colors.onAccent },
   cardCount: { fontFamily: fonts.bold, fontSize: 14, color: colors.onAccent },
   stamps: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5, rowGap: 10 },
   slot: { paddingHorizontal: 5 },

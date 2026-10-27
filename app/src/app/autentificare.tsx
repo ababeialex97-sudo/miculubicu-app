@@ -81,5 +81,5 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, gap: 14 },
-  error: { fontFamily: fonts.medium, fontSize: 13, color: '#FF8A75' },
+  error: { fontFamily: fonts.medium, fontSize: 13, color: colors.error },
 });

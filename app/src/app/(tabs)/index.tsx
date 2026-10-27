@@ -9,7 +9,7 @@ import type { Product } from '@/api/types';
 import { CartBar } from '@/components/cart-bar';
 import { Icon } from '@/components/icon';
 import { AppText, Centered, Chip, LoadError } from '@/components/ui';
-import { colors, fonts, minTouchSize } from '@/constants/theme';
+import { colors, fonts, headingText, minTouchSize } from '@/constants/theme';
 import { stampsLeftLabel } from '@/lib/cart';
 import { productSubtitle } from '@/lib/format';
 import { stampSlots } from '@/lib/loyalty';
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   dot: { width: 18, height: 18, borderRadius: 9 },
   dotFilled: { backgroundColor: colors.onAccent },
   dotEmpty: { borderWidth: 2, borderColor: colors.onAccent },
-  loyaltyTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.onAccent },
+  loyaltyTitle: { ...headingText, fontSize: 20, lineHeight: 22, color: colors.onAccent },
   loyaltyText: { fontFamily: fonts.medium, fontSize: 13, color: colors.onAccent },
   chips: { gap: 8, paddingVertical: 4 },
   sectionTitle: { marginTop: 12, marginBottom: 2 },
