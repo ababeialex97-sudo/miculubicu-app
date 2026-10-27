@@ -43,7 +43,7 @@ Principii:
 - **Aplicația nu vorbește NICIODATĂ direct cu GrandChef.** Protocolul GrandChef trimite parola în clar pe TCP; doar serverul o folosește.
 - **WooCommerce este sursa unică**: același meniu, aceleași comenzi și aceiași clienți pentru site și aplicație.
 - Comenzile din aplicație devin comenzi WooCommerce obișnuite; plugin-ul GrandChef le trimite mai departe automat când trec în `processing`.
-- Logica nouă (API pentru aplicație, fidelizare, statusuri, push, rutarea pe locații) stă într-un **plugin WordPress propriu**, versionat în acest repo. Nu modificăm tema și, pe cât posibil, nu modificăm plugin-ul GrandChef.
+- Logica nouă (API pentru aplicație, fidelizare, statusuri, push, rutarea pe locații) stă într-un **plugin WordPress propriu**, versionat în acest repo. Pe cât posibil, nu modificăm plugin-ul GrandChef. Site-ul are o temă proprie, `wordpress/mlb-theme/`, editabilă din Elementor (decizia lui Alex, 15 oct. 2026), care înlocuiește Bouffe.
 
 Stack aplicație (propunere, de confirmat la început):
 - Expo + expo-router, TypeScript strict;
@@ -111,11 +111,13 @@ Recomandare: implementarea peste cupoanele WooCommerce (generate automat per cli
 
 ## 7. Design
 
-Machetă (5 ecrane: Meniu, Produs, Coș, Status comandă, Fidelitate): artefact „Aplicație Micu' lu' Bicu” în contul claude.ai al lui Alex.
-- fundal cărbune `#17120F`, suprafețe `#241C17`, chenare `#3A2E25`, text `#F6EEE3`, text secundar `#BFAF9E`;
-- roșu jar `#C8321F` (butoane principale), galben-muștar `#F2B705` (accente, prețuri, fidelitate);
-- fonturi: Zilla Slab (titluri), Figtree (text);
+Machetă aplicație (5 ecrane: Meniu, Produs, Coș, Status comandă, Fidelitate): artefact „Aplicație Micu' lu' Bicu” în contul claude.ai al lui Alex. Machetă site: artefactul „Site nou Micu' lu' Bicu”. Aceeași direcție vizuală pentru aplicație și site (aprobată 15 oct. 2026; maroniul a fost respins explicit):
+- fundal gri-cărbune neutru `#232323`, carduri `#2F2F2F`, chenare `#474747`, subsol `#1B1B1B`;
+- text alb `#FFFFFF`, text secundar `#D2D2D2`, estompat `#A9A9A9`; niciodată text închis pe fundal închis;
+- roșu jar `#C8321F` (butoane principale), galben-muștar `#F2B705` (accente, prețuri, fidelitate), text pe muștar `#141414`;
+- fonturi: Barlow Condensed 800, majuscule (titluri), Barlow (text);
 - ținte de atingere ≥ 44px; contrast AA.
+- Site: fiecare secțiune e un widget Elementor din `wordpress/mlb-theme/inc/widgets/`, cu toate textele, pozele și culorile editabile din Elementor (cerința lui Alex).
 Pozele reale ale produselor sunt pe site (`/wp-content/uploads/2025/09/...`).
 
 ## 8. Reguli de lucru

@@ -1,0 +1,489 @@
+/*
+ * Micu' lu' Bicu theme.
+ * Colors come from Elementor's global colors when set (Site Settings), with the brand values as fallback.
+ * Every widget's "Culori" controls override the --mlb-* variables for that widget only.
+ */
+
+:root {
+	--mlb-bg: var(--e-global-color-mlbbg, #232323);
+	--mlb-surface: var(--e-global-color-mlbsurface, #2F2F2F);
+	--mlb-line: var(--e-global-color-mlbline, #474747);
+	--mlb-dark: var(--e-global-color-mlbdark, #1B1B1B);
+	--mlb-text: var(--e-global-color-text, #FFFFFF);
+	--mlb-muted: var(--e-global-color-accent, #D2D2D2);
+	--mlb-faint: var(--e-global-color-mlbmuted, #A9A9A9);
+	--mlb-primary: var(--e-global-color-primary, #C8321F);
+	--mlb-accent: var(--e-global-color-secondary, #F2B705);
+	--mlb-on-accent: var(--e-global-color-mlbonaccent, #141414);
+
+	--mlb-header-bg: rgba(35, 35, 35, 0.96);
+	--mlb-footer-bg: var(--mlb-dark);
+	--mlb-band-bg: #2A2A2A;
+	--mlb-band-accent: var(--mlb-accent);
+	--mlb-promo-bg: var(--mlb-primary);
+	--mlb-promo-text: #FFFFFF;
+	--mlb-promo-code-bg: #FFFFFF;
+	--mlb-promo-code: var(--mlb-primary);
+
+	--mlb-font-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
+	--mlb-font: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--mlb-radius: 20px;
+	--mlb-radius-sm: 12px;
+	--mlb-container: 1240px;
+	--mlb-gutter: 24px;
+	--mlb-header-offset: var(--wp-admin--admin-bar--height, 0px);
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 96px; }
+
+body {
+	margin: 0;
+	background: var(--mlb-bg);
+	color: var(--mlb-text);
+	font-family: var(--mlb-font);
+	font-size: 17px;
+	line-height: 1.55;
+	-webkit-font-smoothing: antialiased;
+}
+
+img, svg, video { max-width: 100%; height: auto; display: block; }
+
+a { color: var(--mlb-accent); text-underline-offset: 3px; }
+a:hover { color: #FFD24D; }
+
+:focus-visible { outline: 3px solid var(--mlb-accent); outline-offset: 2px; }
+
+h1, h2, h3, h4, h5, h6 { color: var(--mlb-text); margin: 0 0 .5em; }
+
+.mlb-heading,
+.mlb-page-title,
+.mlb-entry__content h1,
+.mlb-entry__content h2,
+.woocommerce-products-header__title,
+.product_title {
+	font-family: var(--mlb-font-heading);
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0;
+	line-height: 1;
+}
+
+p { margin: 0 0 1em; }
+
+.mlb-container { width: 100%; max-width: var(--mlb-container); margin: 0 auto; padding: 0 var(--mlb-gutter); }
+
+.mlb-section { padding: 72px 0; background: var(--mlb-bg); color: var(--mlb-text); }
+
+.mlb-skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; padding: 12px 16px; background: var(--mlb-accent); color: var(--mlb-on-accent); font-weight: 700; border-radius: 8px; }
+.mlb-skip-link:focus { left: 8px; }
+
+.mlb-icon { width: 20px; height: 20px; flex: none; }
+
+.mlb-eyebrow { display: block; font-weight: 700; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--mlb-accent); margin-bottom: 10px; }
+
+.mlb-heading-group { margin-bottom: 28px; }
+.mlb-heading-group h2, .mlb-section-title__title { font-size: clamp(36px, 5vw, 56px); margin: 0; }
+
+.mlb-section-title__text { color: var(--mlb-muted); max-width: 640px; margin: 14px 0 0; }
+.mlb-section-title[style*="center"] .mlb-section-title__text { margin-left: auto; margin-right: auto; }
+
+/* Photo placeholder until a real photo is chosen. */
+.mlb-ph { position: relative; background: radial-gradient(120% 90% at 30% 85%, #6B2A16 0%, #3A1F18 38%, #262626 75%); min-height: 120px; }
+.mlb-ph__label { position: absolute; left: 14px; bottom: 12px; font: 600 12px/1.3 var(--mlb-font); letter-spacing: .08em; text-transform: uppercase; color: #F0F0F0; background: rgba(20, 20, 20, .72); padding: 6px 9px; border-radius: 6px; }
+
+.mlb-editor-notice { padding: 16px; border: 2px dashed var(--mlb-accent); border-radius: var(--mlb-radius-sm); color: var(--mlb-text); }
+
+/* ---------- Buttons ---------- */
+
+.mlb-btn {
+	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+	min-height: 48px; padding: 0 20px; border-radius: 14px; border: 1px solid transparent;
+	font: 700 16px/1.1 var(--mlb-font); text-decoration: none; cursor: pointer; white-space: nowrap;
+	transition: transform .15s ease, background-color .15s ease, color .15s ease;
+}
+.mlb-btn:active { transform: translateY(1px); }
+.mlb-btn--lg { min-height: 56px; padding: 0 26px; font-size: 17px; border-radius: 16px; }
+.mlb-btn--primary { background: var(--mlb-primary); color: #FFFFFF; }
+.mlb-btn--primary:hover { background: #A92716; color: #FFFFFF; }
+.mlb-btn--accent { background: var(--mlb-accent); color: var(--mlb-on-accent); }
+.mlb-btn--accent:hover { background: #FFD24D; color: var(--mlb-on-accent); }
+.mlb-btn--outline { border-color: var(--mlb-accent); color: var(--mlb-accent); background: transparent; }
+.mlb-btn--outline:hover { background: var(--mlb-accent); color: var(--mlb-on-accent); }
+.mlb-btn--ghost { border-color: var(--mlb-line); color: var(--mlb-text); background: transparent; font-weight: 600; font-size: 15px; }
+.mlb-btn--ghost:hover { border-color: var(--mlb-accent); color: var(--mlb-text); }
+.mlb-btn--ghost .mlb-icon { color: var(--mlb-accent); }
+.mlb-btn--dark { background: #141414; color: #FFFFFF; }
+.mlb-btn--dark:hover { background: #000000; color: #FFFFFF; }
+.mlb-btn--link { min-height: 44px; padding: 0; color: var(--mlb-accent); }
+.mlb-btn--link::after { content: "→"; }
+
+/* ---------- Promo bar ---------- */
+
+.mlb-promo { background: var(--mlb-promo-bg); color: var(--mlb-promo-text); font-weight: 600; font-size: 15px; overflow: hidden; max-height: 80px; transition: max-height .25s ease; }
+.mlb-promo__inner { max-width: var(--mlb-container); margin: 0 auto; padding: 9px var(--mlb-gutter); text-align: center; }
+.mlb-promo__link { color: inherit; text-decoration: none; }
+.mlb-promo__link:hover { color: inherit; text-decoration: underline; }
+.mlb-promo__code { display: inline-block; margin: 0 4px; padding: 1px 8px; border-radius: 6px; background: var(--mlb-promo-code-bg); color: var(--mlb-promo-code); }
+.mlb-promo__sep { margin: 0 8px; }
+.is-scrolled .mlb-promo--collapsible { max-height: 0; }
+
+/* ---------- Header ---------- */
+
+.mlb-site-header { position: sticky; top: var(--mlb-header-offset); z-index: 50; }
+
+.mlb-header { background: var(--mlb-header-bg); border-bottom: 1px solid var(--mlb-line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: var(--mlb-text); }
+.mlb-header__inner { display: flex; align-items: center; gap: 28px; min-height: 76px; padding-top: 10px; padding-bottom: 10px; }
+
+.mlb-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--mlb-text); flex: none; }
+.mlb-brand:hover { color: var(--mlb-text); }
+.mlb-brand__logo { width: 52px; height: 52px; object-fit: contain; }
+.mlb-brand__text { display: flex; flex-direction: column; }
+.mlb-brand__name { font: 800 22px/1 var(--mlb-font-heading); text-transform: uppercase; }
+.mlb-brand__tag { font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--mlb-accent); margin-top: 3px; }
+
+.mlb-header__nav { flex: 1; }
+.mlb-menu { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 22px; }
+.mlb-menu a { display: inline-flex; align-items: center; min-height: 44px; color: var(--mlb-text); text-decoration: none; font-weight: 600; font-size: 16px; }
+.mlb-menu a:hover, .mlb-menu .current-menu-item > a { color: var(--mlb-accent); }
+
+.mlb-header__actions { display: flex; align-items: center; gap: 10px; }
+.mlb-header__phone-mobile { display: none; }
+.mlb-header__toggle { display: none; width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--mlb-line); background: transparent; color: var(--mlb-text); align-items: center; justify-content: center; cursor: pointer; }
+
+.mlb-cartbtn .mlb-cart-total:not(:empty)::before { content: "· "; }
+.mlb-cart-count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--mlb-accent); color: var(--mlb-on-accent); font-size: 12px; font-weight: 700; }
+.mlb-cart-count[data-count="0"] { display: none; }
+.mlb-cart-total .woocommerce-Price-currencySymbol { margin-left: 2px; }
+
+.mlb-fallback-header { background: var(--mlb-header-bg); border-bottom: 1px solid var(--mlb-line); }
+.mlb-fallback-header__inner { display: flex; align-items: center; gap: 24px; min-height: 72px; }
+.mlb-fallback-header__nav ul { list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; }
+.mlb-fallback-header__nav a { color: var(--mlb-text); text-decoration: none; font-weight: 600; }
+
+/* ---------- Hero ---------- */
+
+.mlb-hero { padding: 56px 0 64px; }
+.mlb-hero__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: center; }
+.mlb-hero__copy { display: flex; flex-direction: column; gap: 22px; }
+.mlb-hero__rating { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; font-size: 16px; color: var(--mlb-muted); }
+.mlb-hero__title { font-size: clamp(44px, 6.4vw, 84px); line-height: .96; margin: 0; }
+.mlb-hero__text { margin: 0; font-size: 19px; color: var(--mlb-muted); max-width: 560px; }
+.mlb-hero__buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+.mlb-hero__media { position: relative; }
+.mlb-hero__image { width: 100%; height: 580px; object-fit: cover; border-radius: 28px; }
+
+.mlb-stars { display: inline-flex; gap: 2px; color: var(--mlb-accent); }
+.mlb-stars .mlb-icon { width: 18px; height: 18px; }
+
+.mlb-delivery { max-width: 580px; padding: 18px; background: var(--mlb-surface); border: 1px solid var(--mlb-line); border-radius: 18px; display: flex; flex-direction: column; gap: 10px; }
+.mlb-delivery__label { font-weight: 700; font-size: 17px; color: var(--mlb-text); }
+.mlb-delivery__row { display: flex; gap: 8px; }
+.mlb-delivery__input { flex: 1; min-width: 0; height: 54px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--mlb-line); background: var(--mlb-bg); color: var(--mlb-text); font: 500 17px var(--mlb-font); }
+.mlb-delivery__input::placeholder { color: var(--mlb-faint); }
+.mlb-delivery__row .mlb-btn { min-height: 54px; }
+.mlb-delivery__saved { margin: 0; font-size: 15px; color: var(--mlb-muted); }
+.mlb-delivery__info { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; color: var(--mlb-muted); }
+
+.mlb-loyalty-card { position: absolute; left: -24px; bottom: 36px; width: 310px; padding: 18px; border-radius: 20px; background: var(--mlb-accent); color: var(--mlb-on-accent); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 40px rgba(0, 0, 0, .35); }
+.mlb-loyalty-card__title { font: 800 22px/1 var(--mlb-font-heading); text-transform: uppercase; }
+.mlb-loyalty-card__text { font-weight: 600; font-size: 15px; }
+.mlb-loyalty-card__stamps { display: flex; gap: 8px; }
+.mlb-stamp { width: 40px; height: 40px; border-radius: 10px; border: 2px dashed #141414; }
+.mlb-stamp.is-filled { background: #141414; border-style: solid; }
+.mlb-stamp.is-reward { background: var(--mlb-primary); border: 0; }
+
+/* ---------- Features strip ---------- */
+
+.mlb-features { padding: 28px 0; background: var(--mlb-band-bg); border-top: 1px solid var(--mlb-line); border-bottom: 1px solid var(--mlb-line); }
+.mlb-features__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.mlb-feature { display: flex; gap: 14px; align-items: flex-start; }
+.mlb-feature__icon { color: var(--mlb-accent); font-size: 26px; line-height: 1; flex: none; width: 30px; }
+.mlb-feature__icon svg { width: 28px; height: 28px; fill: currentColor; }
+.mlb-feature__title { font-weight: 700; color: var(--mlb-text); }
+.mlb-feature__text { font-size: 15px; color: var(--mlb-muted); }
+
+/* ---------- Products ---------- */
+
+.mlb-products__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 28px; }
+.mlb-products__head .mlb-heading-group { margin: 0; }
+.mlb-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.mlb-tab { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--mlb-line); background: transparent; color: var(--mlb-text); font: 600 16px var(--mlb-font); cursor: pointer; }
+.mlb-tab:hover { border-color: var(--mlb-accent); }
+.mlb-tab.is-active { background: var(--mlb-primary); border-color: var(--mlb-primary); color: #FFFFFF; font-weight: 700; }
+
+.mlb-products__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.mlb-products--large .mlb-products__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mlb-products__empty { color: var(--mlb-muted); }
+
+.mlb-product { background: var(--mlb-surface); border-radius: var(--mlb-radius); overflow: hidden; display: flex; flex-direction: column; color: var(--mlb-text); }
+.mlb-product[hidden] { display: none; }
+.mlb-product__media { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; }
+.mlb-product__img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.mlb-product:hover .mlb-product__img { transform: scale(1.03); }
+.mlb-badge { position: absolute; top: 12px; left: 12px; padding: 5px 11px; border-radius: 999px; background: var(--mlb-accent); color: var(--mlb-on-accent); font-weight: 700; font-size: 13px; }
+.mlb-product__body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.mlb-product__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.mlb-product__name { margin: 0; font: 700 18px/1.25 var(--mlb-font); text-transform: none; }
+.mlb-product__name a { color: var(--mlb-text); text-decoration: none; }
+.mlb-product__name a:hover { color: var(--mlb-accent); }
+.mlb-product__weight { font-size: 14px; color: var(--mlb-muted); white-space: nowrap; }
+.mlb-product__desc { margin: 0; font-size: 15px; color: var(--mlb-muted); flex: 1; }
+.mlb-product__bottom { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 10px; }
+.mlb-product__price { font-weight: 700; font-size: 19px; color: var(--mlb-accent); }
+.mlb-product__price del { color: var(--mlb-faint); font-weight: 500; font-size: .8em; margin-right: 6px; }
+.mlb-product__price ins { text-decoration: none; }
+.mlb-product__soldout { font-size: 14px; color: var(--mlb-faint); }
+
+.mlb-add { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 20px; border-radius: 14px; border: 0; background: var(--mlb-primary); color: #FFFFFF; font: 700 16px var(--mlb-font); text-decoration: none; cursor: pointer; }
+.mlb-add:hover { background: #A92716; color: #FFFFFF; }
+.mlb-add--round { width: 48px; height: 48px; padding: 0; border-radius: 24px; }
+.mlb-add--choose { background: transparent; border: 1px solid var(--mlb-accent); color: var(--mlb-accent); }
+.mlb-add.loading { opacity: .6; pointer-events: none; }
+.mlb-add.added { background: #2E7D32; }
+.mlb-product .added_to_cart { display: none; }
+
+.mlb-products--large .mlb-product { border: 1px solid var(--mlb-line); }
+.mlb-products--large .mlb-product__media { aspect-ratio: 16 / 10; }
+.mlb-products--large .mlb-product__name { font: 800 30px/1 var(--mlb-font-heading); text-transform: uppercase; }
+.mlb-products--large .mlb-product__price { font-size: 24px; }
+
+.mlb-products--list .mlb-products__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mlb-products--list .mlb-product { flex-direction: row; padding: 10px; gap: 12px; }
+.mlb-products--list .mlb-product__media { width: 104px; height: 104px; aspect-ratio: auto; flex: none; border-radius: 12px; }
+.mlb-products--list .mlb-product__body { padding: 0; }
+
+/* ---------- Photo + text ---------- */
+
+.mlb-split-section { padding: 48px 0; }
+.mlb-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.mlb-split--image-right .mlb-split__image { order: 2; }
+.mlb-split--boxed { background: var(--mlb-surface); border-radius: 28px; overflow: hidden; gap: 0; align-items: stretch; }
+.mlb-split--boxed .mlb-split__copy { padding: 48px; }
+.mlb-split__image { width: 100%; height: 100%; min-height: 440px; object-fit: cover; border-radius: 28px; }
+.mlb-split--boxed .mlb-split__image { border-radius: 0; }
+.mlb-split__copy { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+.mlb-split__title { font-size: clamp(34px, 4.2vw, 50px); margin: 0; }
+.mlb-split__text { color: var(--mlb-muted); }
+.mlb-split__text p:last-child { margin-bottom: 0; }
+.mlb-split__items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.mlb-mini-box { padding: 12px 14px; border: 1px solid var(--mlb-line); border-radius: 12px; }
+.mlb-mini-box__title { font-weight: 700; color: var(--mlb-text); }
+.mlb-mini-box__text { font-size: 14px; color: var(--mlb-muted); }
+
+/* ---------- Locations ---------- */
+
+.mlb-locations__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.mlb-location { background: var(--mlb-surface); border-radius: var(--mlb-radius); overflow: hidden; display: flex; flex-direction: column; }
+.mlb-location__image { width: 100%; height: 210px; object-fit: cover; }
+.mlb-location__body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.mlb-location__name { font-size: 30px; margin: 0; }
+.mlb-location__line { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 16px; color: var(--mlb-muted); }
+.mlb-location__line .mlb-icon { color: var(--mlb-accent); margin-top: 2px; width: 18px; height: 18px; }
+.mlb-location__buttons { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; margin-top: auto; }
+
+/* ---------- Reviews ---------- */
+
+.mlb-reviews__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+.mlb-reviews__title { font-size: clamp(36px, 5vw, 56px); margin: 0; }
+.mlb-reviews__summary { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 600; color: var(--mlb-muted); }
+.mlb-reviews__summary-link { color: inherit; }
+.mlb-reviews__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.mlb-review { margin: 0; padding: 24px; background: var(--mlb-surface); border-radius: var(--mlb-radius); display: flex; flex-direction: column; gap: 12px; }
+.mlb-review__quote { margin: 0; }
+.mlb-review__text { margin: 0; font-size: 18px; color: var(--mlb-text); }
+.mlb-review__author { font-size: 15px; color: var(--mlb-muted); }
+
+/* ---------- App band ---------- */
+
+.mlb-app-band-section { padding: 48px 0; }
+.mlb-app-band { background: var(--mlb-band-accent); color: var(--mlb-on-accent); border-radius: 28px; padding: 48px; display: flex; gap: 40px; flex-wrap: wrap; align-items: center; }
+.mlb-app-band__copy { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.mlb-app-band .mlb-eyebrow { color: var(--mlb-on-accent); }
+.mlb-app-band__title { font-size: clamp(34px, 4.2vw, 50px); color: var(--mlb-on-accent); margin: 0; }
+.mlb-app-band__text { margin: 0; font-size: 18px; font-weight: 500; color: var(--mlb-on-accent); }
+.mlb-app-band__stores { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.mlb-phone { flex: 0 1 290px; width: 280px; height: 430px; margin: 0 auto; border-radius: 42px; background: #141414; padding: 14px; box-shadow: 0 24px 48px rgba(0, 0, 0, .25); }
+.mlb-phone__screen { height: 100%; border-radius: 30px; background: var(--mlb-bg); border: 1px solid var(--mlb-line); padding: 18px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; color: var(--mlb-text); }
+.mlb-phone__img { width: 100%; height: 100%; object-fit: cover; border-radius: 22px; }
+.mlb-phone__title { font-size: 26px; }
+.mlb-phone__card { background: var(--mlb-accent); color: var(--mlb-on-accent); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.mlb-phone__card-title { font-size: 17px; color: var(--mlb-on-accent); }
+.mlb-phone__card .mlb-stamp { width: 34px; height: 34px; border-radius: 8px; }
+.mlb-phone__coupon { background: var(--mlb-surface); border: 1px dashed var(--mlb-accent); border-radius: 12px; padding: 10px; font-size: 14px; font-weight: 600; }
+
+/* ---------- Footer ---------- */
+
+.mlb-footer { background: var(--mlb-footer-bg); border-top: 1px solid var(--mlb-line); padding: 56px 0 28px; color: var(--mlb-muted); font-size: 15px; }
+.mlb-footer__grid { display: grid; grid-template-columns: 1.2fr repeat(3, minmax(0, 1fr)); gap: 32px; }
+.mlb-footer__logo { width: 88px; height: 88px; object-fit: contain; margin-bottom: 14px; }
+.mlb-footer__tagline { margin: 0 0 12px; }
+.mlb-footer__social { display: flex; gap: 14px; flex-wrap: wrap; margin: 0; }
+.mlb-footer__social-link, .mlb-footer__content a { color: var(--mlb-accent); font-weight: 600; }
+.mlb-footer__title { font: 700 17px/1.3 var(--mlb-font); text-transform: none; color: var(--mlb-text); margin: 0 0 10px; }
+.mlb-footer__content p { margin: 0; line-height: 2; }
+.mlb-footer__content a { font-weight: 500; text-decoration: none; }
+.mlb-footer__content a:hover { text-decoration: underline; }
+.mlb-footer__bottom { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--mlb-line); }
+.mlb-footer__badges { display: flex; gap: 12px; flex-wrap: wrap; }
+.mlb-footer__badges img { height: 50px; width: auto; }
+.mlb-footer__legal { margin: 0; font-size: 14px; color: var(--mlb-faint); }
+.mlb-footer__company { display: block; }
+
+.mlb-fallback-footer { background: var(--mlb-footer-bg); padding: 32px 0; color: var(--mlb-muted); }
+
+/* ---------- Mobile cart bar ---------- */
+
+.mlb-cartbar { display: none; }
+.mlb-cartbar:has(.mlb-cart-count[data-count="0"]) .mlb-cartbar__full,
+.mlb-cartbar:has(.mlb-cart-count[data-count="0"]) .mlb-cart-total { display: none; }
+.mlb-cartbar:not(:has(.mlb-cart-count[data-count="0"])) .mlb-cartbar__empty { display: none; }
+
+/* ---------- Classic pages and WooCommerce ---------- */
+
+.mlb-content { padding-top: 48px; padding-bottom: 72px; }
+.mlb-page-title { font-size: clamp(38px, 5vw, 60px); }
+.mlb-entry__content { max-width: 820px; color: var(--mlb-muted); }
+.mlb-entry__content h2, .mlb-entry__content h3 { color: var(--mlb-text); margin-top: 1.4em; }
+.mlb-entry { margin-bottom: 40px; }
+.mlb-entry__title a { color: var(--mlb-text); text-decoration: none; }
+
+.woocommerce, .woocommerce-page { color: var(--mlb-text); }
+.woocommerce a.button, .woocommerce button.button, .woocommerce input.button, .woocommerce #respond input#submit,
+.woocommerce a.button.alt, .woocommerce button.button.alt, .woocommerce input.button.alt,
+.wc-block-components-button:not(.is-link) {
+	background: var(--mlb-primary); color: #FFFFFF; border-radius: 14px; min-height: 48px; padding: 12px 22px; font: 700 16px var(--mlb-font); border: 0;
+}
+.woocommerce a.button:hover, .woocommerce button.button:hover, .woocommerce button.button.alt:hover, .woocommerce a.button.alt:hover,
+.wc-block-components-button:not(.is-link):hover { background: #A92716; color: #FFFFFF; }
+.woocommerce div.product p.price, .woocommerce div.product span.price, .woocommerce ul.products li.product .price { color: var(--mlb-accent); font-weight: 700; }
+.woocommerce ul.products li.product .woocommerce-loop-product__title { color: var(--mlb-text); font: 700 18px var(--mlb-font); }
+.woocommerce ul.products li.product { background: var(--mlb-surface); border-radius: var(--mlb-radius); padding-bottom: 16px; overflow: hidden; }
+.woocommerce ul.products li.product a img { margin: 0 0 12px; }
+.woocommerce ul.products li.product .woocommerce-loop-product__title, .woocommerce ul.products li.product .price { padding: 0 16px; }
+.woocommerce ul.products li.product .button { margin: 8px 16px 0; }
+.woocommerce span.onsale { background: var(--mlb-accent); color: var(--mlb-on-accent); min-height: auto; line-height: 1.6; padding: 2px 10px; border-radius: 999px; }
+.woocommerce form .form-row input.input-text, .woocommerce form .form-row textarea, .woocommerce form .form-row select,
+.woocommerce .quantity .qty, .select2-container--default .select2-selection--single,
+.wc-block-components-text-input input, .wc-block-components-textarea, .wc-block-components-select select {
+	background: var(--mlb-bg); color: var(--mlb-text); border: 1px solid var(--mlb-line); border-radius: 10px; min-height: 48px; padding: 10px 14px; font: 500 16px var(--mlb-font);
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered { color: var(--mlb-text); }
+.woocommerce form .form-row label, .wc-block-components-text-input label { color: var(--mlb-muted); }
+.woocommerce table.shop_table { border-color: var(--mlb-line); border-radius: var(--mlb-radius-sm); }
+.woocommerce table.shop_table th, .woocommerce table.shop_table td { border-color: var(--mlb-line); color: var(--mlb-text); }
+.woocommerce-checkout #payment, .woocommerce-cart .cart-collaterals .cart_totals, #add_payment_method #payment { background: var(--mlb-surface); border-radius: var(--mlb-radius); }
+.woocommerce-checkout #payment div.payment_box { background: var(--mlb-bg); color: var(--mlb-muted); }
+.woocommerce-checkout #payment div.payment_box::before { border-bottom-color: var(--mlb-bg); }
+.woocommerce-message, .woocommerce-info, .woocommerce-error, .wc-block-components-notice-banner { background: var(--mlb-surface); color: var(--mlb-text); border-top-color: var(--mlb-accent); }
+.woocommerce-error { border-top-color: var(--mlb-primary); }
+.woocommerce-message::before, .woocommerce-info::before { color: var(--mlb-accent); }
+.woocommerce .woocommerce-breadcrumb, .woocommerce .woocommerce-breadcrumb a { color: var(--mlb-faint); }
+.woocommerce div.product .woocommerce-tabs ul.tabs li { background: var(--mlb-surface); border-color: var(--mlb-line); }
+.woocommerce div.product .woocommerce-tabs ul.tabs li a { color: var(--mlb-text); }
+.woocommerce div.product .woocommerce-tabs ul.tabs li.active { background: var(--mlb-bg); }
+.woocommerce div.product .woocommerce-tabs ul.tabs li::before, .woocommerce div.product .woocommerce-tabs ul.tabs li::after { display: none; }
+.woocommerce nav.woocommerce-pagination ul li a, .woocommerce nav.woocommerce-pagination ul li span { color: var(--mlb-text); }
+.woocommerce nav.woocommerce-pagination ul li span.current { background: var(--mlb-surface); }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1100px) {
+	.mlb-header__phone span { display: none; }
+	.mlb-menu { gap: 4px 16px; }
+	.mlb-footer__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1024px) {
+	.mlb-header__inner { gap: 16px; }
+	.mlb-header__nav {
+		display: none; position: absolute; left: 0; right: 0; top: 100%;
+		background: var(--mlb-bg); border-bottom: 1px solid var(--mlb-line); padding: 12px var(--mlb-gutter) 20px;
+		max-height: calc(100vh - 140px); overflow-y: auto;
+	}
+	.mlb-header { position: relative; }
+	.mlb-header.is-open .mlb-header__nav { display: block; }
+	.mlb-header__nav .mlb-menu { flex-direction: column; gap: 0; }
+	.mlb-header__nav .mlb-menu a { min-height: 52px; font-size: 19px; border-bottom: 1px solid var(--mlb-line); width: 100%; }
+	.mlb-header__phone-mobile { display: inline-flex; margin-top: 16px; width: 100%; }
+	.mlb-header__phone { display: none; }
+	.mlb-header__actions { margin-left: auto; }
+	.mlb-header__toggle { display: inline-flex; }
+
+	.mlb-hero__grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+	.mlb-hero__media { order: -1; }
+	.mlb-hero__image { height: 420px; }
+	.mlb-loyalty-card { left: 16px; bottom: 16px; }
+
+	.mlb-features__grid, .mlb-products__grid, .mlb-locations__grid, .mlb-reviews__grid, .mlb-products--large .mlb-products__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.mlb-split { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+	.mlb-split--image-right .mlb-split__image { order: 0; }
+	.mlb-split__image { min-height: 300px; }
+	.mlb-split--boxed .mlb-split__copy { padding: 0 28px 32px; }
+}
+
+@media (max-width: 767px) {
+	:root { --mlb-gutter: 16px; }
+	body { font-size: 16px; }
+	.mlb-section { padding: 44px 0; }
+	html { scroll-padding-top: 80px; }
+
+	.mlb-promo { font-size: 13px; }
+	.mlb-promo__inner { padding: 7px 12px; }
+	.mlb-promo__sep, .mlb-promo__extra { display: none; }
+
+	.mlb-header__inner { min-height: 64px; }
+	.mlb-brand__logo { width: 42px; height: 42px; }
+	.mlb-brand__name { font-size: 19px; }
+	.mlb-brand__tag { display: none; }
+	.mlb-cartbtn { min-height: 48px; padding: 0 12px; }
+	.mlb-cartbtn__label, .mlb-cartbtn .mlb-cart-total { display: none; }
+
+	.mlb-hero { padding: 0 0 36px; }
+	.mlb-hero__grid { padding: 0; }
+	.mlb-hero__copy { padding: 0 var(--mlb-gutter); }
+	.mlb-hero__image { height: 300px; border-radius: 0; }
+	.mlb-loyalty-card { display: none; }
+	.mlb-hero__title { font-size: 44px; }
+	.mlb-hero__text { font-size: 17px; }
+	.mlb-hero__buttons .mlb-btn { flex: 1 1 100%; }
+	.mlb-delivery__row { flex-direction: column; }
+	.mlb-delivery__input { flex: none; width: 100%; }
+	.mlb-badge { white-space: nowrap; }
+
+	.mlb-features__grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+	.mlb-products__grid, .mlb-locations__grid, .mlb-reviews__grid, .mlb-products--large .mlb-products__grid, .mlb-products--list .mlb-products__grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+	.mlb-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--mlb-gutter)); padding: 0 var(--mlb-gutter); width: calc(100% + 2 * var(--mlb-gutter)); }
+	.mlb-tab { flex: none; }
+
+	/* Menu cards become compact rows on phones. */
+	.mlb-products--card .mlb-product { flex-direction: row; padding: 10px; gap: 12px; }
+	.mlb-products--card .mlb-product__media { width: 104px; height: 104px; aspect-ratio: auto; flex: none; border-radius: 12px; }
+	.mlb-products--card .mlb-product__body { padding: 0; }
+	.mlb-products--card .mlb-product__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; }
+	.mlb-products--card .mlb-badge { top: 6px; left: 6px; font-size: 11px; padding: 3px 7px; }
+
+	.mlb-split__items { grid-template-columns: minmax(0, 1fr); }
+	.mlb-split--boxed .mlb-split__copy { padding: 0 20px 24px; }
+	.mlb-location__buttons .mlb-btn { flex: 1; }
+	.mlb-app-band { padding: 28px 22px; }
+	.mlb-phone { display: none; }
+	.mlb-footer__grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+
+	.mlb-cartbar { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--mlb-header-bg); border-top: 1px solid var(--mlb-line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+	.mlb-cartbar__btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 54px; padding: 0 18px; border-radius: 16px; background: var(--mlb-primary); color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 17px; }
+	.mlb-cartbar__btn:hover { color: #FFFFFF; }
+	.mlb-cartbar__empty { flex: 1; text-align: center; }
+	body:has(.mlb-cartbar) { padding-bottom: 84px; }
+	body.woocommerce-cart .mlb-cartbar, body.woocommerce-checkout .mlb-cartbar { display: none; }
+	body.woocommerce-cart:has(.mlb-cartbar), body.woocommerce-checkout:has(.mlb-cartbar) { padding-bottom: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html { scroll-behavior: auto; }
+	*, *::before, *::after { transition: none !important; }
+}
