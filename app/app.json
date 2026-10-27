@@ -2,6 +2,7 @@
   "expo": {
     "name": "Micu' lu' Bicu",
     "slug": "miculubicu",
+    "owner": "micu-lu-bicu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
