@@ -42,6 +42,7 @@ export default function CartScreen() {
   const clientOrderId = useRef(randomId());
 
   const location = resolveLocation(config.data, cart.locationId);
+  const hasLocationChoice = (config.data?.locations.length ?? 0) > 1;
   const paymentMethods = config.data?.payment_methods ?? [];
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const paymentMethod = paymentMethods.find((m) => m.id === paymentId) ?? paymentMethods[0];
@@ -153,6 +154,16 @@ export default function CartScreen() {
     );
   };
 
+  const locationDetails = (
+    <>
+      <Icon name="pin" size={20} color={colors.accent} />
+      <View style={{ flex: 1 }}>
+        <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
+        <AppText variant="muted">{isDelivery ? 'Livrează acest punct de lucru' : location?.address || 'Ridici de aici'}</AppText>
+      </View>
+    </>
+  );
+
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -210,16 +221,16 @@ export default function CartScreen() {
           </View>
         ) : null}
 
-        <Link href="/locatie" asChild>
-          <Pressable accessibilityRole="button" style={styles.locationRow}>
-            <Icon name="pin" size={20} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
-              <AppText variant="muted">{isDelivery ? 'Livrează acest punct de lucru' : location?.address || 'Ridici de aici'}</AppText>
-            </View>
-            <AppText style={styles.change}>Schimbă</AppText>
-          </Pressable>
-        </Link>
+        {hasLocationChoice ? (
+          <Link href="/locatie" asChild>
+            <Pressable accessibilityRole="button" style={styles.locationRow}>
+              {locationDetails}
+              <AppText style={styles.change}>Schimbă</AppText>
+            </Pressable>
+          </Link>
+        ) : (
+          <View style={styles.locationRow}>{locationDetails}</View>
+        )}
         {errors.location ? <AppText style={styles.error}>{errors.location}</AppText> : null}
 
         {asGuest ? (
