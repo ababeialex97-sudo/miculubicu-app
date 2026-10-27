@@ -106,9 +106,10 @@ function ProfileForm({ customer }: { customer: Customer }) {
           <View style={styles.danger}>
             <AppText variant="bodyStrong">Ștergi contul?</AppText>
             <AppText variant="muted">Se șterg datele contului, cardul de fidelitate și cupoanele tale. Comenzile deja plasate rămân la restaurant pentru evidența contabilă.</AppText>
-            <Field label="Parola, pentru confirmare" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" />
+            {/* Accounts made with Google or Apple have no password to confirm with. */}
+            {customer.has_password !== false ? <Field label="Parola, pentru confirmare" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" /> : null}
             {deleteAccount.isError ? <AppText style={styles.error}>{deleteAccount.error.message}</AppText> : null}
-            <Button label="Șterge definitiv contul" loading={deleteAccount.isPending} disabled={!password} onPress={confirmDelete} />
+            <Button label="Șterge definitiv contul" loading={deleteAccount.isPending} disabled={customer.has_password !== false && !password} onPress={confirmDelete} />
             <Button label="Renunță" variant="outline" onPress={() => setConfirmingDelete(false)} />
           </View>
         ) : (

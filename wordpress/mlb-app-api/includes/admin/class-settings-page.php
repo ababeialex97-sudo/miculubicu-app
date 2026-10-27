@@ -1,6 +1,7 @@
 <?php
 /**
- * "Setări aplicație" under WooCommerce: locations, free delivery, shipping methods, loyalty card, test mode.
+ * "Setări aplicație" under WooCommerce: locations, free delivery, shipping methods, loyalty card,
+ * guest ordering and social login, test mode.
  */
 
 namespace MLB\AppApi\Admin;
@@ -131,6 +132,31 @@ class Settings_Page {
 					</tr>
 				</table>
 
+				<h2>Comandă și conectare</h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">Comandă fără cont</th>
+						<td>
+							<label><input type="checkbox" name="guest_checkout" value="1" <?php checked( Settings::guest_checkout_enabled() ); ?>> Clienții pot comanda din aplicație doar cu nume, telefon și adresă</label>
+							<p class="description">Comenzile fără cont nu primesc ștampile. Dacă clientul își face cont mai târziu pe același telefon, comenzile trec în contul lui.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-google-ids">Google – Client ID</label></th>
+						<td>
+							<textarea id="mlb-google-ids" name="google_client_ids" rows="3" class="large-text code"><?php echo esc_textarea( implode( "\n", Settings::google_client_ids() ) ); ?></textarea>
+							<p class="description">ID-ul clientului OAuth de tip „Web application” din Google Cloud (cel dat aplicației ca webClientId), câte unul pe rând. Gol = fără „Continuă cu Google”.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-apple-ids">Apple – Bundle ID</label></th>
+						<td>
+							<textarea id="mlb-apple-ids" name="apple_client_ids" rows="2" class="large-text code"><?php echo esc_textarea( implode( "\n", Settings::apple_client_ids() ) ); ?></textarea>
+							<p class="description">Bundle ID-ul aplicației iOS (<?php echo esc_html( Settings::DEFAULT_APPLE_CLIENT_ID ); ?>). Gol = fără „Continuă cu Apple”.</p>
+						</td>
+					</tr>
+				</table>
+
 				<h2>Mod de test</h2>
 				<table class="form-table" role="presentation">
 					<tr>
@@ -163,6 +189,9 @@ class Settings_Page {
 		update_option( Settings::OPTION_DELIVERY_INSTANCE, absint( $_POST['delivery_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_PICKUP_INSTANCE, absint( $_POST['pickup_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_TEST_MODE, empty( $_POST['test_mode'] ) ? 'no' : 'yes' );
+		update_option( Settings::OPTION_GUEST_CHECKOUT, empty( $_POST['guest_checkout'] ) ? 'no' : 'yes' );
+		update_option( Settings::OPTION_GOOGLE_CLIENT_IDS, implode( "\n", Settings::id_list( wp_unslash( $_POST['google_client_ids'] ?? '' ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized by id_list().
+		update_option( Settings::OPTION_APPLE_CLIENT_IDS, implode( "\n", Settings::id_list( wp_unslash( $_POST['apple_client_ids'] ?? '' ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized by id_list().
 
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalized below.
 		$loyalty            = isset( $_POST['loyalty'] ) && is_array( $_POST['loyalty'] ) ? wp_unslash( $_POST['loyalty'] ) : array();

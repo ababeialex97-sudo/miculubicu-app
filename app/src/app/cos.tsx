@@ -4,17 +4,20 @@ import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { previewCart, useCartPreview, useConfig, useCreateOrder } from '@/api/hooks';
-import type { CartPreviewRequest } from '@/api/types';
+import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder } from '@/api/hooks';
+import type { CartPreviewRequest, NewOrder } from '@/api/types';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { addCouponCode, deliveryFeeBani, orderItems, subtotalBani } from '@/lib/cart';
+import { guestContactErrors, type GuestContact } from '@/lib/guest';
 import { randomId } from '@/lib/id';
 import { registerForPush } from '@/lib/push';
 import { resolveLocation } from '@/lib/location';
 import { formatBani, toBani } from '@/lib/money';
+import { paymentLabel } from '@/lib/payment';
 import { useCart } from '@/store/cart';
+import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
 
 export default function CartScreen() {
@@ -22,16 +25,27 @@ export default function CartScreen() {
   const config = useConfig();
   const customer = useSession((s) => s.customer);
   const createOrder = useCreateOrder();
+  const createGuestOrder = useCreateGuestOrder();
+
+  // Without an account the customer can still order with just their details, when the restaurant allows it.
+  const asGuest = !customer && config.data?.guest_checkout === true;
+  const placing = customer ? createOrder : createGuestOrder;
+  const savedContact = useGuestOrders((s) => s.contact);
+  const [contact, setContact] = useState<Omit<GuestContact, 'phone'>>(savedContact);
+  const updateContact = (change: Partial<GuestContact>) => setContact((current) => ({ ...current, ...change }));
 
   // Untouched, the field follows the account's phone, including after logging in from this screen.
   const [phoneInput, setPhone] = useState<string | null>(null);
-  const phone = phoneInput ?? customer?.phone ?? '';
+  const phone = phoneInput ?? customer?.phone ?? savedContact.phone;
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Same ID for every retry of this checkout, so a timeout never creates a duplicate order.
   const clientOrderId = useRef(randomId());
 
   const location = resolveLocation(config.data, cart.locationId);
-  const paymentMethod = config.data?.payment_methods[0];
+  const hasLocationChoice = (config.data?.locations.length ?? 0) > 1;
+  const paymentMethods = config.data?.payment_methods ?? [];
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const paymentMethod = paymentMethods.find((m) => m.id === paymentId) ?? paymentMethods[0];
   const isDelivery = cart.fulfillment === 'delivery';
 
   const [codeInput, setCodeInput] = useState('');
@@ -41,7 +55,7 @@ export default function CartScreen() {
     () => ({ items: orderItems(cart.lines), coupon_codes: cart.couponCodes, fulfillment: cart.fulfillment, location_id: location?.id ?? '' }),
     [cart.lines, cart.couponCodes, cart.fulfillment, location?.id],
   );
-  const preview = useCartPreview(customer ? previewRequest : null);
+  const preview = useCartPreview(previewRequest);
   // A code that stopped applying (e.g. the cart dropped under its minimum) blocks the order until removed.
   const couponProblem = cart.couponCodes.length > 0 && preview.isError ? preview.error.message : null;
 
@@ -63,10 +77,6 @@ export default function CartScreen() {
   const total = Math.max(0, subtotal - discount) + shipping;
 
   const applyCode = async () => {
-    if (!customer) {
-      router.push('/autentificare');
-      return;
-    }
     const codes = addCouponCode(cart.couponCodes, codeInput);
     if (codes === cart.couponCodes) {
       setCodeInput('');
@@ -86,12 +96,12 @@ export default function CartScreen() {
   };
 
   const submit = () => {
-    if (!customer) {
+    if (!customer && !asGuest) {
       router.push('/autentificare');
       return;
     }
 
-    const found: Record<string, string> = {};
+    const found: Record<string, string> = asGuest ? { ...guestContactErrors({ ...contact, phone }) } : {};
     if (!location) found.location = 'Alege punctul de lucru.';
     if (isDelivery && !cart.address.address_1.trim()) found.address_1 = 'Scrie adresa de livrare.';
     if (isDelivery && !cart.address.city.trim()) found.city = 'Scrie localitatea.';
@@ -103,29 +113,56 @@ export default function CartScreen() {
       return;
     }
 
-    createOrder.mutate(
-      {
-        client_order_id: clientOrderId.current,
-        location_id: location.id,
-        fulfillment: cart.fulfillment,
-        address: isDelivery ? cart.address : undefined,
-        phone: phone.trim(),
-        note: cart.note.trim(),
-        payment_method: paymentMethod.id,
-        items: orderItems(cart.lines),
-        coupon_codes: cart.couponCodes,
-      },
-      {
-        onSuccess: (order) => {
-          cart.clear();
-          clientOrderId.current = randomId();
-          router.replace(`/comanda/${order.id}`);
+    const order: NewOrder = {
+      client_order_id: clientOrderId.current,
+      location_id: location.id,
+      fulfillment: cart.fulfillment,
+      address: isDelivery ? cart.address : undefined,
+      phone: phone.trim(),
+      note: cart.note.trim(),
+      payment_method: paymentMethod.id,
+      items: orderItems(cart.lines),
+      coupon_codes: cart.couponCodes,
+    };
+    const placed = (orderId: number) => {
+      cart.clear();
+      clientOrderId.current = randomId();
+      router.replace(`/comanda/${orderId}`);
+    };
+
+    if (customer) {
+      createOrder.mutate(order, {
+        onSuccess: ({ id }) => {
+          placed(id);
           // Right after ordering is when asking for notification permission makes sense.
           void registerForPush({ ask: true });
+        },
+      });
+      return;
+    }
+
+    const guestContact = { first_name: contact.first_name.trim(), last_name: contact.last_name.trim(), email: contact.email.trim() };
+    createGuestOrder.mutate(
+      { ...order, ...guestContact },
+      {
+        onSuccess: ({ id, guest_token }) => {
+          useGuestOrders.getState().setContact({ ...guestContact, phone: phone.trim() });
+          placed(id);
+          void registerForPush({ ask: true, guestOrder: { id, token: guest_token } });
         },
       },
     );
   };
+
+  const locationDetails = (
+    <>
+      <Icon name="pin" size={20} color={colors.accent} />
+      <View style={{ flex: 1 }}>
+        <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
+        <AppText variant="muted">{isDelivery ? 'Livrează acest punct de lucru' : location?.address || 'Ridici de aici'}</AppText>
+      </View>
+    </>
+  );
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -184,17 +221,44 @@ export default function CartScreen() {
           </View>
         ) : null}
 
-        <Link href="/locatie" asChild>
-          <Pressable accessibilityRole="button" style={styles.locationRow}>
-            <Icon name="pin" size={20} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
-              <AppText variant="muted">{isDelivery ? 'Livrează acest punct de lucru' : location?.address || 'Ridici de aici'}</AppText>
-            </View>
-            <AppText style={styles.change}>Schimbă</AppText>
-          </Pressable>
-        </Link>
+        {hasLocationChoice ? (
+          <Link href="/locatie" asChild>
+            <Pressable accessibilityRole="button" style={styles.locationRow}>
+              {locationDetails}
+              <AppText style={styles.change}>Schimbă</AppText>
+            </Pressable>
+          </Link>
+        ) : (
+          <View style={styles.locationRow}>{locationDetails}</View>
+        )}
         {errors.location ? <AppText style={styles.error}>{errors.location}</AppText> : null}
+
+        {asGuest ? (
+          <View style={styles.guestCard}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <AppText variant="bodyStrong">Comanzi fără cont</AppText>
+              <AppText variant="muted">Ai nevoie doar de nume și telefon. Cu un cont strângi ștampile pe cardul de fidelitate.</AppText>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/autentificare')} style={styles.guestLogin}>
+              <AppText style={styles.change}>Intră în cont</AppText>
+            </Pressable>
+          </View>
+        ) : null}
+        {asGuest ? (
+          <View style={{ gap: 12 }}>
+            <Field label="Prenume" value={contact.first_name} onChangeText={(first_name) => updateContact({ first_name })} autoComplete="given-name" error={errors.first_name} />
+            <Field label="Nume (opțional)" value={contact.last_name} onChangeText={(last_name) => updateContact({ last_name })} autoComplete="family-name" />
+            <Field
+              label="Email (opțional)"
+              value={contact.email}
+              onChangeText={(email) => updateContact({ email })}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={errors.email}
+            />
+          </View>
+        ) : null}
 
         {isDelivery ? (
           <View style={{ gap: 12 }}>
@@ -253,9 +317,17 @@ export default function CartScreen() {
           <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
             Plata
           </AppText>
-          <View style={styles.payment}>
-            <AppText variant="bodyStrong">{isDelivery ? 'Numerar la livrare' : 'Numerar la ridicare'}</AppText>
-          </View>
+          {paymentMethods.length > 1 && paymentMethod ? (
+            <Segmented
+              value={paymentMethod.id}
+              onChange={setPaymentId}
+              options={paymentMethods.map((m) => ({ value: m.id, label: paymentLabel(m.id, cart.fulfillment) }))}
+            />
+          ) : (
+            <View style={styles.payment}>
+              <AppText variant="bodyStrong">{paymentLabel(paymentMethod?.id ?? 'cod', cart.fulfillment)}</AppText>
+            </View>
+          )}
           {errors.payment ? <AppText style={styles.error}>{errors.payment}</AppText> : null}
         </View>
       </ScrollView>
@@ -269,8 +341,8 @@ export default function CartScreen() {
           <AppText style={styles.total}>{formatBani(total)}</AppText>
         </View>
         {Object.keys(errors).length > 0 ? <AppText style={styles.error}>Verifică datele marcate mai sus.</AppText> : null}
-        {createOrder.isError ? <AppText style={styles.error}>{createOrder.error.message}</AppText> : null}
-        <Button label={customer ? 'Trimite comanda' : 'Intră în cont ca să comanzi'} loading={createOrder.isPending} onPress={submit} />
+        {placing.isError ? <AppText style={styles.error}>{placing.error.message}</AppText> : null}
+        <Button label={customer || asGuest ? 'Trimite comanda' : 'Intră în cont ca să comanzi'} loading={placing.isPending} onPress={submit} />
       </SafeAreaView>
     </SafeAreaView>
   );
@@ -302,6 +374,8 @@ const styles = StyleSheet.create({
   card: { padding: 14, borderRadius: 14, backgroundColor: colors.surface, gap: 8 },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden' },
   progressFill: { height: 8, backgroundColor: colors.accent },
+  guestCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: colors.surface },
+  guestLogin: { minHeight: minTouchSize, justifyContent: 'center' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
   change: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   payment: { minHeight: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },

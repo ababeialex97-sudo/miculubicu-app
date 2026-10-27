@@ -1,5 +1,8 @@
 import { useSession } from '@/store/session';
 
+/** Header carrying a guest order's token (see /orders/guest in mlb-app-api). */
+export const ORDER_TOKEN_HEADER = 'X-MLB-Order-Token';
+
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://miculubicu.ro/wp-json/mlb/v1').replace(/\/+$/, '');
 
 export class ApiError extends Error {
@@ -17,10 +20,11 @@ type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   auth?: boolean;
+  headers?: Record<string, string>;
 };
 
-export async function api<T>(path: string, { method = 'GET', body, auth = false }: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+export async function api<T>(path: string, { method = 'GET', body, auth = false, headers: extraHeaders }: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json', ...extraHeaders };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }

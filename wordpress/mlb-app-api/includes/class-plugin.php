@@ -18,10 +18,20 @@ class Plugin {
 		}
 
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
+
+		require_once MLB_APP_API_DIR . '/includes/class-card-gateway.php';
+		add_filter(
+			'woocommerce_payment_gateways',
+			static function ( array $gateways ): array {
+				$gateways[] = Card_Gateway::class;
+				return $gateways;
+			}
+		);
 		Product_Fields::init();
 		Order_Status::init();
 		Coupons::init();
 		Loyalty::init();
+		GrandChef_Diagnostics::init();
 
 		if ( is_admin() ) {
 			Admin\Orders_Page::init();
@@ -33,11 +43,13 @@ class Plugin {
 			add_action( $hook, array( Rest\Menu_Controller::class, 'flush_cache' ) );
 		}
 
-		// A password change logs the customer out of the app on every device.
+		// A password change logs the customer out of the app on every device. A customer who
+		// signed up with Google or Apple and then sets a password has a password from then on.
 		add_action(
 			'after_password_reset',
 			static function ( \WP_User $user ): void {
 				Auth::revoke_tokens( $user->ID );
+				delete_user_meta( $user->ID, Social_Login::SOCIAL_ONLY_META );
 			}
 		);
 		add_action(
@@ -46,6 +58,7 @@ class Plugin {
 				$user = get_user_by( 'id', $user_id );
 				if ( $user && $user->user_pass !== $old_user->user_pass ) {
 					Auth::revoke_tokens( $user_id );
+					delete_user_meta( $user_id, Social_Login::SOCIAL_ONLY_META );
 				}
 			},
 			10,

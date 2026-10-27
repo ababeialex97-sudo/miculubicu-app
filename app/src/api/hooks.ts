@@ -1,7 +1,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/api/client';
-import type { CartPreview, CartPreviewRequest, Config, Customer, Loyalty, Menu, NewOrder, Order, Session } from '@/api/types';
+import { ORDER_TOKEN_HEADER, api } from '@/api/client';
+import type { CartPreview, CartPreviewRequest, Config, Customer, GuestOrder, Loyalty, Menu, NewGuestOrder, NewOrder, Order, Session } from '@/api/types';
+import { guestTokenFor } from '@/lib/guest';
+import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
 
 export const queryKeys = {
@@ -9,6 +11,7 @@ export const queryKeys = {
   config: ['config'] as const,
   orders: ['orders'] as const,
   order: (id: number) => ['orders', id] as const,
+  guestOrders: (ids: number[]) => ['orders', 'guest', ids] as const,
   loyalty: ['loyalty'] as const,
   cartPreview: (request: CartPreviewRequest) => ['cart-preview', request] as const,
 };
@@ -42,12 +45,28 @@ export function useOrders() {
   });
 }
 
+/** Orders placed on this phone without an account, while logged out. */
+export function useGuestOrderList() {
+  const token = useSession((s) => s.token);
+  const refs = useGuestOrders((s) => s.orders);
+  return useQuery({
+    queryKey: queryKeys.guestOrders(refs.map((r) => r.id)),
+    queryFn: () => api<Order[]>('/orders/guest/lookup', { method: 'POST', body: { orders: refs } }),
+    enabled: token === null && refs.length > 0,
+  });
+}
+
+/** One order: through the account, or with the token kept for an order placed without one. */
 export function useOrder(id: number) {
   const token = useSession((s) => s.token);
+  const guestToken = useGuestOrders((s) => guestTokenFor(s.orders, id));
   return useQuery({
     queryKey: queryKeys.order(id),
-    queryFn: () => api<Order>(`/orders/${id}`, { auth: true }),
-    enabled: token !== null && Number.isFinite(id),
+    queryFn: () =>
+      guestToken
+        ? api<Order>(`/orders/guest/${id}`, { headers: { [ORDER_TOKEN_HEADER]: guestToken } })
+        : api<Order>(`/orders/${id}`, { auth: true }),
+    enabled: (token !== null || guestToken !== null) && Number.isFinite(id),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === 'completed' || status === 'cancelled' ? false : ACTIVE_ORDER_POLL_MS;
@@ -68,6 +87,18 @@ export function useRegister() {
   return useMutation({
     mutationFn: (input: { email: string; password: string; first_name: string; last_name: string; phone: string }) =>
       api<Session>('/auth/register', { method: 'POST', body: input }),
+    onSuccess: signIn,
+  });
+}
+
+export type SocialLogin =
+  | { provider: 'google'; id_token: string }
+  | { provider: 'apple'; identity_token: string; first_name: string; last_name: string };
+
+export function useSocialLogin() {
+  const signIn = useSession((s) => s.signIn);
+  return useMutation({
+    mutationFn: ({ provider, ...body }: SocialLogin) => api<Session>(`/auth/${provider}`, { method: 'POST', body }),
     onSuccess: signIn,
   });
 }
@@ -106,6 +137,19 @@ export function useCreateOrder() {
   });
 }
 
+export function useCreateGuestOrder() {
+  const queryClient = useQueryClient();
+  const addGuestOrder = useGuestOrders((s) => s.add);
+  return useMutation({
+    mutationFn: (order: NewGuestOrder) => api<GuestOrder>('/orders/guest', { method: 'POST', body: order }),
+    onSuccess: ({ guest_token, ...order }) => {
+      addGuestOrder({ id: order.id, token: guest_token });
+      queryClient.setQueryData(queryKeys.order(order.id), order);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders });
+    },
+  });
+}
+
 export function useLoyalty() {
   const token = useSession((s) => s.token);
   return useQuery({
@@ -115,20 +159,22 @@ export function useLoyalty() {
   });
 }
 
+// Works without an account too; with one, account-only codes (rewards, first order) are checked.
 export function previewCart(request: CartPreviewRequest) {
-  return api<CartPreview>('/cart/preview', { method: 'POST', body: request, auth: true });
+  return api<CartPreview>('/cart/preview', { method: 'POST', body: request, auth: useSession.getState().token !== null });
 }
 
 /**
  * Server totals for a cart with coupon codes, recomputed when the cart changes.
  * Without codes the local totals are already exact, so nothing is fetched.
  */
-export function useCartPreview(request: CartPreviewRequest | null) {
+export function useCartPreview(request: CartPreviewRequest) {
   const token = useSession((s) => s.token);
   return useQuery({
-    queryKey: queryKeys.cartPreview(request ?? { items: [], coupon_codes: [], fulfillment: 'delivery', location_id: '' }),
-    queryFn: () => previewCart(request!),
-    enabled: token !== null && request !== null && request.coupon_codes.length > 0 && request.items.length > 0,
+    // The account changes which codes apply.
+    queryKey: [...queryKeys.cartPreview(request), token !== null],
+    queryFn: () => previewCart(request),
+    enabled: request.coupon_codes.length > 0 && request.items.length > 0,
     placeholderData: keepPreviousData,
     retry: false,
   });

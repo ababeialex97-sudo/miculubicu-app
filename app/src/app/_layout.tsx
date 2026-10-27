@@ -8,7 +8,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 
 import { colors } from '@/constants/theme';
+import { useClaimGuestOrders } from '@/hooks/use-claim-guest-orders';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
 
 void SplashScreen.preventAutoHideAsync();
@@ -28,12 +30,14 @@ export default function RootLayout() {
     Barlow_700Bold,
   });
   const sessionHydrated = useSession((s) => s.hydrated);
+  const guestOrdersHydrated = useGuestOrders((s) => s.hydrated);
 
   useEffect(() => {
     void useSession.getState().hydrate();
+    void useGuestOrders.getState().hydrate();
   }, []);
 
-  const ready = (fontsLoaded || fontError !== null) && sessionHydrated;
+  const ready = (fontsLoaded || fontError !== null) && sessionHydrated && guestOrdersHydrated;
 
   useEffect(() => {
     if (ready) {
@@ -55,6 +59,7 @@ export default function RootLayout() {
 
 function AppStack() {
   usePushNotifications();
+  useClaimGuestOrders();
 
   return (
     <Stack

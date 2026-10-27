@@ -72,6 +72,16 @@ export default function MenuScreen() {
     });
   };
 
+  const locationDetails = (
+    <>
+      <Icon name="pin" size={20} color={colors.accent} />
+      <View style={{ flex: 1 }}>
+        <AppText variant="muted">{fulfillment === 'delivery' ? 'Livrare din punctul' : 'Ridicare de la'}</AppText>
+        <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
+      </View>
+    </>
+  );
+
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
       <SectionList
@@ -86,16 +96,16 @@ export default function MenuScreen() {
               <AppText style={styles.tagline}>de la Bicu, direct pe jar</AppText>
             </View>
 
-            <Link href="/locatie" asChild>
-              <Pressable accessibilityRole="button" style={styles.locationButton}>
-                <Icon name="pin" size={20} color={colors.accent} />
-                <View style={{ flex: 1 }}>
-                  <AppText variant="muted">{fulfillment === 'delivery' ? 'Livrare din punctul' : 'Ridicare de la'}</AppText>
-                  <AppText variant="bodyStrong">{location?.name ?? 'Alege punctul de lucru'}</AppText>
-                </View>
-                <Icon name="chevronDown" size={18} color={colors.text} />
-              </Pressable>
-            </Link>
+            {(config.data?.locations.length ?? 0) > 1 ? (
+              <Link href="/locatie" asChild>
+                <Pressable accessibilityRole="button" style={styles.locationButton}>
+                  {locationDetails}
+                  <Icon name="chevronDown" size={18} color={colors.text} />
+                </Pressable>
+              </Link>
+            ) : (
+              <View style={styles.locationButton}>{locationDetails}</View>
+            )}
 
             {loyalty.data?.enabled === false ? null : (
               <Link href="/fidelitate" asChild>

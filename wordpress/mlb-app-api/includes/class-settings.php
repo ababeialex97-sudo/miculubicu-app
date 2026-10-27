@@ -18,6 +18,12 @@ class Settings {
 	public const OPTION_DELIVERY_INSTANCE  = 'mlb_app_api_delivery_instance_id';
 	public const OPTION_PICKUP_INSTANCE    = 'mlb_app_api_pickup_instance_id';
 	public const OPTION_JWT_SECRET         = 'mlb_app_api_jwt_secret';
+	public const OPTION_GUEST_CHECKOUT     = 'mlb_app_api_guest_checkout';
+	public const OPTION_GOOGLE_CLIENT_IDS  = 'mlb_app_api_google_client_ids';
+	public const OPTION_APPLE_CLIENT_IDS   = 'mlb_app_api_apple_client_ids';
+
+	/** The app's iOS bundle ID: the audience of Sign in with Apple tokens from the app. */
+	public const DEFAULT_APPLE_CLIENT_ID = 'ro.miculubicu.app';
 
 	public const TEST_ORDER_NOTE = 'COMANDA DE TEST';
 
@@ -86,6 +92,42 @@ class Settings {
 	 */
 	public static function is_test_mode(): bool {
 		return 'no' !== get_option( self::OPTION_TEST_MODE, 'yes' );
+	}
+
+	/**
+	 * Whether customers can order from the app without an account.
+	 */
+	public static function guest_checkout_enabled(): bool {
+		return 'no' !== get_option( self::OPTION_GUEST_CHECKOUT, 'yes' );
+	}
+
+	/**
+	 * OAuth client IDs whose Google ID tokens are accepted (the "aud" claim). Empty disables Google login.
+	 *
+	 * @return string[]
+	 */
+	public static function google_client_ids(): array {
+		return self::id_list( get_option( self::OPTION_GOOGLE_CLIENT_IDS, '' ) );
+	}
+
+	/**
+	 * Bundle IDs / Services IDs whose Apple identity tokens are accepted. Empty disables Apple login.
+	 *
+	 * @return string[]
+	 */
+	public static function apple_client_ids(): array {
+		return self::id_list( get_option( self::OPTION_APPLE_CLIENT_IDS, self::DEFAULT_APPLE_CLIENT_ID ) );
+	}
+
+	/**
+	 * One ID per line or comma separated.
+	 *
+	 * @param mixed $value
+	 * @return string[]
+	 */
+	public static function id_list( $value ): array {
+		$ids = preg_split( '/[\s,]+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY );
+		return array_values( array_unique( array_map( 'sanitize_text_field', (array) $ids ) ) );
 	}
 
 	/**
