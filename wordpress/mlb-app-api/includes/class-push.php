@@ -18,7 +18,7 @@ class Push {
 	 * a missed notification must not block the status change itself.
 	 */
 	public static function notify_status( \WC_Order $order, string $status ): void {
-		$text = Push_Messages::for_status( $status, (string) $order->get_meta( '_mlb_fulfillment' ), (string) $order->get_order_number() );
+		$text = Push_Messages::for_status( $status, (string) $order->get_meta( '_mlb_fulfillment' ), (string) $order->get_order_number(), Delivery_Quote::eta_minutes_left( $order ) );
 		if ( null === $text ) {
 			return;
 		}

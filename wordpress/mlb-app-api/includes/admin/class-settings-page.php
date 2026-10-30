@@ -6,8 +6,10 @@
 
 namespace MLB\AppApi\Admin;
 
+use MLB\AppApi\Distance_Pricing;
 use MLB\AppApi\Loyalty;
 use MLB\AppApi\Loyalty_Rules;
+use MLB\AppApi\Maps;
 use MLB\AppApi\Rest\Menu_Controller;
 use MLB\AppApi\Settings;
 
@@ -52,7 +54,7 @@ class Settings_Page {
 				<?php wp_nonce_field( self::ACTION ); ?>
 
 				<h2>Puncte de lucru</h2>
-				<p class="description">Costul livrării și pragul gol înseamnă valorile generale de mai jos. Un rând fără nume e ignorat.</p>
+				<p class="description">Costul livrării și pragul gol înseamnă valorile generale de mai jos. Un rând fără nume e ignorat. Coordonatele (de unde pleacă livratorul) le copiezi din Google Maps: click dreapta pe restaurant, apoi click pe primul rând cu cifre.</p>
 				<table class="widefat striped">
 					<thead>
 						<tr>
@@ -63,6 +65,7 @@ class Settings_Page {
 							<th>Ridicare</th>
 							<th>Cost livrare</th>
 							<th>Livrare gratuită de la</th>
+							<th>Coordonate</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -78,6 +81,7 @@ class Settings_Page {
 							<td><input type="checkbox" name="locations[<?php echo (int) $index; ?>][pickup]" value="1" <?php checked( ! empty( $location['pickup'] ) || empty( $location ) ); ?> aria-label="Ridicare"></td>
 							<td><input type="number" min="0" step="0.01" style="width:90px" name="locations[<?php echo (int) $index; ?>][delivery_fee]" value="<?php echo esc_attr( $location['delivery_fee'] ?? '' ); ?>" aria-label="Cost livrare"></td>
 							<td><input type="number" min="0" step="0.01" style="width:90px" name="locations[<?php echo (int) $index; ?>][free_delivery_threshold]" value="<?php echo esc_attr( $location['free_delivery_threshold'] ?? '' ); ?>" aria-label="Livrare gratuită de la"></td>
+							<td><input type="text" style="width:100%" placeholder="46.64, 27.73" name="locations[<?php echo (int) $index; ?>][coordinates]" value="<?php echo esc_attr( $location['coordinates'] ?? '' ); ?>" aria-label="Coordonate"></td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
@@ -90,6 +94,27 @@ class Settings_Page {
 						<td>
 							<input id="mlb-free" type="number" min="0" step="0.01" name="free_delivery_threshold" value="<?php echo esc_attr( (string) get_option( Settings::OPTION_FREE_DELIVERY_FROM, '0' ) ); ?>">
 							<p class="description">0 = fără livrare gratuită. Costul de bază al livrării vine din metoda de livrare WooCommerce aleasă mai jos.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-bands">Preț după distanță</label></th>
+						<td>
+							<textarea id="mlb-bands" name="distance_bands" rows="5" class="code" placeholder="2 = 10&#10;4 = 15&#10;6 = 20"><?php echo esc_textarea( Distance_Pricing::bands_to_text( Settings::get_distance_bands() ) ); ?></textarea>
+							<p class="description">Câte un rând „până la km = lei”, pe distanța reală pe drum. Ultimul rând e distanța maximă până la care livrați. Gol = același cost pentru orice adresă. Costul fix rămâne și pentru adresele pe care harta nu le găsește. Pragul de livrare gratuită se aplică și aici.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-maps-key">Cheie Google Maps</label></th>
+						<td>
+							<?php if ( defined( 'MLB_APP_API_MAPS_KEY' ) && '' !== MLB_APP_API_MAPS_KEY ) : ?>
+								<p>Cheia e setată în wp-config.php.</p>
+							<?php else : ?>
+								<input id="mlb-maps-key" type="password" autocomplete="off" class="regular-text" name="maps_key" value="" placeholder="<?php echo esc_attr( Maps::is_configured() ? 'Cheie salvată, scrie alta ca s-o schimbi' : 'AIza...' ); ?>">
+								<?php if ( Maps::is_configured() ) : ?>
+									<label><input type="checkbox" name="maps_key_delete" value="1"> Șterge cheia</label>
+								<?php endif; ?>
+							<?php endif; ?>
+							<p class="description">Din Google Cloud, cu „Geocoding API” și „Routes API” activate. Fără cheie, livrarea are un singur cost, iar aplicația nu arată timpul estimat de sosire.</p>
 						</td>
 					</tr>
 					<tr>
@@ -186,6 +211,14 @@ class Settings_Page {
 
 		update_option( Settings::OPTION_LOCATIONS, self::sanitize_locations( $rows ) );
 		update_option( Settings::OPTION_FREE_DELIVERY_FROM, self::money( wp_unslash( $_POST['free_delivery_threshold'] ?? '0' ) ) ?? '0' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		update_option( Settings::OPTION_DISTANCE_BANDS, Distance_Pricing::bands_to_text( Distance_Pricing::parse_bands( wp_unslash( $_POST['distance_bands'] ?? '' ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed to numbers.
+		// The key field stays empty when shown, so an empty submit keeps the saved key.
+		$maps_key = sanitize_text_field( wp_unslash( $_POST['maps_key'] ?? '' ) );
+		if ( ! empty( $_POST['maps_key_delete'] ) ) {
+			delete_option( Settings::OPTION_MAPS_KEY );
+		} elseif ( '' !== $maps_key ) {
+			update_option( Settings::OPTION_MAPS_KEY, $maps_key, false );
+		}
 		update_option( Settings::OPTION_DELIVERY_INSTANCE, absint( $_POST['delivery_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_PICKUP_INSTANCE, absint( $_POST['pickup_instance_id'] ?? 0 ) );
 		update_option( Settings::OPTION_TEST_MODE, empty( $_POST['test_mode'] ) ? 'no' : 'yes' );
@@ -249,6 +282,10 @@ class Settings_Page {
 				if ( null !== $value ) {
 					$location[ $key ] = $value;
 				}
+			}
+			$point = Distance_Pricing::parse_coordinates( (string) ( $row['coordinates'] ?? '' ) );
+			if ( $point ) {
+				$location['coordinates'] = $point['lat'] . ', ' . $point['lng'];
 			}
 			$locations[] = $location;
 		}

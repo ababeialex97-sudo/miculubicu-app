@@ -36,6 +36,9 @@ class Order_Status {
 
 		Statuses::record( $order, $status );
 		$order->add_order_note( 'Status în aplicație: ' . Statuses::labels()[ $status ] );
+		if ( Statuses::ON_THE_WAY === $status ) {
+			Delivery_Quote::record_eta( $order );
+		}
 
 		self::$syncing = true;
 		try {

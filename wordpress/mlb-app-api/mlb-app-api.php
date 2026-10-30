@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MLB App API
  * Description:       REST API for the Micu' lu' Bicu mobile app (menu, customer auth, orders, push tokens).
- * Version:           0.2.5
+ * Version:           0.3.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -12,12 +12,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MLB_APP_API_VERSION', '0.2.5' );
+define( 'MLB_APP_API_VERSION', '0.3.0' );
 define( 'MLB_APP_API_FILE', __FILE__ );
 define( 'MLB_APP_API_DIR', __DIR__ );
 
 require_once __DIR__ . '/includes/class-jwt.php';
+require_once __DIR__ . '/includes/class-distance-pricing.php';
 require_once __DIR__ . '/includes/class-settings.php';
+require_once __DIR__ . '/includes/class-maps.php';
+require_once __DIR__ . '/includes/class-delivery-quote.php';
 require_once __DIR__ . '/includes/class-statuses.php';
 require_once __DIR__ . '/includes/class-auth.php';
 require_once __DIR__ . '/includes/class-id-token.php';
@@ -35,6 +38,7 @@ require_once __DIR__ . '/includes/class-grandchef-diagnostics.php';
 require_once __DIR__ . '/includes/rest/class-auth-controller.php';
 require_once __DIR__ . '/includes/rest/class-menu-controller.php';
 require_once __DIR__ . '/includes/rest/class-config-controller.php';
+require_once __DIR__ . '/includes/rest/class-delivery-controller.php';
 require_once __DIR__ . '/includes/rest/class-orders-controller.php';
 require_once __DIR__ . '/includes/rest/class-push-controller.php';
 require_once __DIR__ . '/includes/rest/class-admin-orders-controller.php';

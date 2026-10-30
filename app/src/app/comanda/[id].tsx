@@ -6,6 +6,7 @@ import { useConfig, useOrder } from '@/api/hooks';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, LoadError } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
+import { etaLabel, formatKm } from '@/lib/delivery';
 import { formatPrice } from '@/lib/money';
 import { paymentLabel } from '@/lib/payment';
 import { formatTime, headline, timeline } from '@/lib/status';
@@ -32,6 +33,7 @@ export default function OrderStatusScreen() {
   const currentIndex = steps.findIndex((s) => s.status === data.status);
   const cancelled = data.status === 'cancelled';
   const reachedAt = new Map(data.status_history.map((h) => [h.status, h.at]));
+  const eta = data.status === 'on_the_way' ? etaLabel(data.eta_at) : null;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -49,6 +51,13 @@ export default function OrderStatusScreen() {
         <AppText variant="title" style={{ fontSize: 32, lineHeight: 33 }}>
           {headline(data.status, data.fulfillment)}
         </AppText>
+        {eta ? (
+          <View style={styles.eta}>
+            <Icon name="pin" size={20} color={colors.accent} />
+            <AppText variant="bodyStrong">{eta}</AppText>
+            <AppText variant="muted">· cu traficul de acum</AppText>
+          </View>
+        ) : null}
 
         {cancelled ? (
           <View style={[styles.banner, { backgroundColor: colors.surface }]}>
@@ -99,7 +108,7 @@ export default function OrderStatusScreen() {
           ))}
           {Number.parseFloat(data.shipping_total) > 0 ? (
             <View style={styles.itemRow}>
-              <AppText style={styles.itemText}>Livrare</AppText>
+              <AppText style={styles.itemText}>Livrare{data.distance_km ? ` · ${formatKm(data.distance_km)}` : ''}</AppText>
               <AppText style={styles.itemText}>{formatPrice(data.shipping_total)}</AppText>
             </View>
           ) : null}
@@ -133,6 +142,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 18 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { width: minTouchSize, height: minTouchSize, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  eta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   banner: { padding: 18, borderRadius: 18 },
   timeline: { paddingHorizontal: 4 },
   step: { flexDirection: 'row', gap: 14 },

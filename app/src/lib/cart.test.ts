@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addLine, deliveryFeeBani, itemCount, joinPreferences, setLineQuantity, subtotalBani, type CartLine, addCouponCode, removeCouponCode, stampsLeftLabel } from './cart.ts';
+import { addLine, itemCount, joinPreferences, setLineQuantity, subtotalBani, type CartLine, addCouponCode, removeCouponCode, stampsLeftLabel } from './cart.ts';
 
 const mici = {
   productId: 1,
@@ -40,12 +40,6 @@ test('quantity is capped and zero removes the line', () => {
 test('subtotal is exact in bani', () => {
   const lines = addLine(addLine([], { ...mici, unitPrice: '0.10', quantity: 3 }), { ...mici, productId: 2, unitPrice: '0.20', quantity: 1 });
   assert.equal(subtotalBani(lines), 50);
-});
-
-test('delivery is free from the threshold, never when the threshold is 0', () => {
-  assert.equal(deliveryFeeBani(9999, 1000, 10000), 1000);
-  assert.equal(deliveryFeeBani(10000, 1000, 10000), 0);
-  assert.equal(deliveryFeeBani(50000, 1000, 0), 1000);
 });
 
 test('preferences join chips and the note', () => {

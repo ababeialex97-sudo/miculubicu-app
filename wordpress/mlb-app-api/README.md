@@ -37,6 +37,7 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | POST | `/orders/guest/{id}/push-token` | header `X-MLB-Order-Token` | Notificări push pentru o comandă fără cont |
 | POST | `/orders/claim` | token | Mută în cont comenzile fără cont de pe telefon (istoric + ștampile pentru cele deja finalizate) |
 | GET | `/loyalty` | token | Cardul de fidelitate (ștampile) și cupoanele pe care clientul le poate folosi |
+| POST | `/delivery/quote` | – | Costul livrării pentru o adresă (`location_id`, `address` cu `address_1`, `city` sau `lat`/`lng`): distanța pe drum, prețul tranșei, dacă se livrează acolo |
 | POST | `/cart/preview` | token opțional | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
 | POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
@@ -123,6 +124,24 @@ Totul e construit peste cupoanele WooCommerce, deci reducerile ajung la GrandChe
 
 O comandă primește cel mult două coduri (de exemplu un cod promoțional și recompensa de fidelitate), dacă regulile cupoanelor permit combinarea lor. Codurile se verifică înainte de crearea comenzii, deci un cod greșit nu lasă comenzi pe jumătate făcute.
 
+## Livrare după distanță și timp estimat de sosire
+
+Costul livrării poate depinde de distanța reală pe drum de la punctul de lucru la client. Se activează din **WooCommerce › Setări aplicație** când există toate trei:
+
+1. **Preț după distanță**: câte un rând „până la km = lei”, de exemplu `2 = 10`, `4 = 15`, `6 = 20`. Ultimul rând e distanța maximă; mai departe aplicația spune că nu se livrează la adresa respectivă.
+2. **Coordonatele** punctului de lucru (de unde pleacă livratorul), copiate din Google Maps.
+3. **Cheia Google Maps**, dintr-un proiect Google Cloud cu **Geocoding API** și **Routes API** activate. Cheia se poate pune și în `wp-config.php`: `define( 'MLB_APP_API_MAPS_KEY', '...' );`. Nu ajunge niciodată în aplicație.
+
+Cum funcționează:
+- în coș, după ce clientul scrie adresa, aplicația cere `/delivery/quote` și arată distanța, prețul și adresa găsită pe hartă;
+- la plasarea comenzii serverul recalculează prețul, deci prețul din aplicație nu poate fi forțat; comanda primește o notă cu distanța;
+- pragul de livrare gratuită se aplică peste tranșe;
+- o adresă pe care harta n-o găsește (sau la care Google nu răspunde) primește costul fix al livrării, ca înainte; comanda nu e blocată din cauza hărții;
+- titlul metodei de livrare rămâne același, deci asocierea din GrandChef nu se schimbă;
+- rezultatele se păstrează 30 de zile pentru aceeași adresă, așa că o adresă se plătește la Google o singură dată.
+
+Când personalul pune comanda pe „În drum spre tine”, serverul cere la Google durata drumului cu traficul din acel moment. Clientul vede „Ajunge în jur de 19:42” în aplicație și „Ajunge în aproximativ 12 minute” în notificare.
+
 ## Notificări push
 
 Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat (la comenzile fără cont, la telefonul care a plasat comanda). Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
@@ -139,7 +158,7 @@ Se editează din **WooCommerce › Setări aplicație**; dedesubt, opțiunile fo
 
 | Opțiune | Implicit | Rol |
 | --- | --- | --- |
-| `mlb_app_api_locations` | două puncte de lucru generice (`loc1`, `loc2`) | listă de puncte de lucru (`id`, `name`, `address`, `phone`, `delivery`, `pickup`, opțional `delivery_fee`, `free_delivery_threshold`) |
+| `mlb_app_api_locations` | două puncte de lucru generice (`loc1`, `loc2`) | listă de puncte de lucru (`id`, `name`, `address`, `phone`, `delivery`, `pickup`, opțional `delivery_fee`, `free_delivery_threshold`, `coordinates`) |
 | `mlb_app_api_free_delivery_threshold` | `0` (dezactivat) | prag de livrare gratuită |
 | `mlb_app_api_test_mode` | `yes` | marchează comenzile cu „COMANDA DE TEST” |
 | `mlb_app_api_delivery_instance_id` | prima metodă `flat_rate` activă | metoda WooCommerce pentru livrare |
@@ -147,6 +166,8 @@ Se editează din **WooCommerce › Setări aplicație**; dedesubt, opțiunile fo
 | `mlb_app_api_guest_checkout` | `yes` | comandă fără cont |
 | `mlb_app_api_google_client_ids` | gol (dezactivat) | Client ID-uri Google acceptate, câte unul pe rând |
 | `mlb_app_api_apple_client_ids` | `ro.miculubicu.app` | Bundle ID-uri acceptate pentru Sign in with Apple |
+| `mlb_app_api_distance_bands` | gol (cost fix) | tranșele de preț după distanță, „km = lei” pe rând |
+| `mlb_app_api_maps_key` | gol | cheia Google Maps (sau constanta `MLB_APP_API_MAPS_KEY`) |
 | `mlb_app_api_loyalty` | activ, 4 comenzi, 10%, 60 de zile | cardul de fidelitate (`enabled`, `required`, `reward_type` `percent`/`fixed`, `reward_amount`, `reward_days`) |
 
 Locația aleasă de client se salvează în comandă (`_mlb_location_id`); rutarea spre serverul GrandChef al locației vine la pasul 6.
@@ -167,4 +188,5 @@ php wordpress/mlb-app-api/tests/push-messages-test.php
 php wordpress/mlb-app-api/tests/loyalty-rules-test.php
 php wordpress/mlb-app-api/tests/id-token-test.php
 php wordpress/mlb-app-api/tests/guest-orders-test.php
+php wordpress/mlb-app-api/tests/distance-pricing-test.php
 ```
