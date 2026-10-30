@@ -71,6 +71,7 @@ class Plugin {
 			new Rest\Auth_Controller(),
 			new Rest\Menu_Controller(),
 			new Rest\Config_Controller(),
+			new Rest\Delivery_Controller(),
 			new Rest\Orders_Controller(),
 			new Rest\Push_Controller(),
 			new Rest\Admin_Orders_Controller(),

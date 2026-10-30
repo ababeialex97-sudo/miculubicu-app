@@ -19,6 +19,11 @@ function check( string $name, bool $ok ): void {
 
 $text = Push_Messages::for_status( 'on_the_way', 'delivery', '1084' );
 check( 'on_the_way mentions the order', null !== $text && str_contains( $text['body'], '#1084' ) );
+check( 'on_the_way without ETA says nothing about time', ! str_contains( $text['body'], 'minut' ) );
+$text = Push_Messages::for_status( 'on_the_way', 'delivery', '1084', 12 );
+check( 'on_the_way with ETA', str_ends_with( $text['body'], 'Ajunge în aproximativ 12 minute.' ) );
+check( 'ETA plural from 20', str_contains( Push_Messages::for_status( 'on_the_way', 'delivery', '1', 25 )['body'], '25 de minute' ) );
+check( 'ETA ignored for other statuses', ! str_contains( Push_Messages::for_status( 'preparing', 'delivery', '1', 12 )['body'], 'minut' ) );
 check( 'received sends nothing', null === Push_Messages::for_status( 'received', 'delivery', '1' ) );
 check( 'completed pickup says enjoy', 'Poftă bună!' === Push_Messages::for_status( 'completed', 'pickup', '1' )['title'] );
 check( 'completed delivery says delivered', 'Comanda a fost livrată' === Push_Messages::for_status( 'completed', 'delivery', '1' )['title'] );

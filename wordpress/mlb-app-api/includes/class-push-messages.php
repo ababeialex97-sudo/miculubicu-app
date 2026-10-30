@@ -19,7 +19,7 @@ class Push_Messages {
 	 *
 	 * @return array{title: string, body: string}|null
 	 */
-	public static function for_status( string $status, string $fulfillment, string $order_number ): ?array {
+	public static function for_status( string $status, string $fulfillment, string $order_number, ?int $eta_minutes = null ): ?array {
 		$texts = array(
 			'confirmed'        => array( 'Comanda a fost acceptată', 'Restaurantul a primit comanda #%s și se apucă de ea.' ),
 			'preparing'        => array( 'Comanda ta e pe jar', 'Comanda #%s se pregătește acum.' ),
@@ -33,9 +33,14 @@ class Push_Messages {
 			return null;
 		}
 
+		$body = sprintf( $texts[ $status ][1], $order_number );
+		if ( 'on_the_way' === $status && null !== $eta_minutes ) {
+			$body .= sprintf( ' Ajunge în aproximativ %d %s.', $eta_minutes, 1 === $eta_minutes ? 'minut' : ( $eta_minutes < 20 ? 'minute' : 'de minute' ) );
+		}
+
 		return array(
 			'title' => $texts[ $status ][0],
-			'body'  => sprintf( $texts[ $status ][1], $order_number ),
+			'body'  => $body,
 		);
 	}
 
