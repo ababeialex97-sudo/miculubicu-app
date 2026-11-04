@@ -10,6 +10,7 @@ use MLB\AppApi\Coupons;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Loyalty;
 use MLB\AppApi\Loyalty_Rules;
+use MLB\AppApi\Packaging;
 use MLB\AppApi\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -86,6 +87,9 @@ class Loyalty_Controller {
 			$subtotal += (float) wc_get_price_to_display( $line['product'] ) * $line['quantity'];
 		}
 
+		$packaging = Packaging::summary( $lines, (string) $request['fulfillment'] );
+		$extras    = $packaging ? $packaging['total'] : 0.0;
+
 		$shipping = 0.0;
 		$location = Settings::get_location( (string) $request['location_id'] );
 		if ( 'delivery' === $request['fulfillment'] ) {
@@ -94,11 +98,12 @@ class Loyalty_Controller {
 
 		return rest_ensure_response(
 			array(
-				'subtotal' => Formatter::money( $subtotal ),
-				'discount' => Formatter::money( $result['discount'] ),
-				'shipping' => Formatter::money( $shipping ),
-				'total'    => Formatter::money( max( 0.0, $subtotal - $result['discount'] ) + $shipping ),
-				'coupons'  => $result['coupons'],
+				'subtotal'  => Formatter::money( $subtotal ),
+				'discount'  => Formatter::money( $result['discount'] ),
+				'shipping'  => Formatter::money( $shipping ),
+				'packaging' => Formatter::money( $extras ),
+				'total'     => Formatter::money( max( 0.0, $subtotal - $result['discount'] ) + $extras + $shipping ),
+				'coupons'   => $result['coupons'],
 			)
 		);
 	}

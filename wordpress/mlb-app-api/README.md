@@ -142,6 +142,19 @@ Cum funcționează:
 
 Când personalul pune comanda pe „În drum spre tine”, serverul cere la Google durata drumului cu traficul din acel moment. Clientul vede „Ajunge în jur de 19:42” în aplicație și „Ajunge în aproximativ 12 minute” în notificare.
 
+## Ambalaje și gratuități
+
+Ambalajul se plătește, iar pâinea și muștarul vin gratuit. Toate intră în comandă ca **produse WooCommerce**, pentru că plugin-ul GrandChef trimite doar produse; așa ajung la bucătărie și pe bon cu ID-ul lor GrandChef.
+
+Configurare:
+1. Creezi produse simple pentru **pachet** (sacoșă + cutie + cutie cartofi, 3,5 lei), **ambalaj platou** (10 lei), **pâine** și **muștar**. Fiecare are ID GrandChef și cotă TVA, iar vizibilitatea în catalog e „Ascuns”, ca să nu apară în meniu.
+2. În **WooCommerce › Setări aplicație › Ambalaje și gratuități** le alegi și setezi câte bucăți încap într-un pachet (10) și mărimea porției de muștar (20 ml).
+3. Pe fiecare produs din meniu, în editor: **Bucăți la ambalaj** (1 la un mic, o ceafă sau un cârnăcior; 5 la o porție de 5 mici; 0 la cartofi și sosuri), **Platou**, **Pâine gratis (felii)** și **Muștar gratis (porții)**.
+
+Calcul: pachete = bucățile adunate din toată comanda, împărțite la capacitate și rotunjite în sus (8 mici + 4 cefe = 12 bucăți = 2 pachete). Fiecare platou are ambalajul lui. Opțional, orice comandă primește minim un pachet, iar la ridicare se poate scuti ambalajul. Ambalajul intră după cupoane, deci reducerile nu se aplică la el, iar pragul de livrare gratuită se uită doar la mâncare. Pâinea și muștarul intră la 0 lei; fără produse alese pentru ele, se scriu în observațiile comenzii trimise la GrandChef.
+
+Fără produsul pentru pachet ales în setări, nu se adaugă nimic (comportamentul de până acum).
+
 ## Notificări push
 
 Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat (la comenzile fără cont, la telefonul care a plasat comanda). Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
@@ -189,4 +202,5 @@ php wordpress/mlb-app-api/tests/loyalty-rules-test.php
 php wordpress/mlb-app-api/tests/id-token-test.php
 php wordpress/mlb-app-api/tests/guest-orders-test.php
 php wordpress/mlb-app-api/tests/distance-pricing-test.php
+php wordpress/mlb-app-api/tests/packaging-rules-test.php
 ```

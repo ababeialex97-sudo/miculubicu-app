@@ -7,6 +7,7 @@ namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Maps;
+use MLB\AppApi\Packaging;
 use MLB\AppApi\Settings;
 use MLB\AppApi\Statuses;
 
@@ -64,6 +65,8 @@ class Config_Controller {
 				'payment_methods' => $this->payment_methods(),
 				'statuses'        => Statuses::labels(),
 				'test_mode'       => Settings::is_test_mode(),
+				// Null when packaging isn't charged. Each menu product carries its own `packaging` counts.
+				'packaging'       => Packaging::config(),
 				'guest_checkout'  => Settings::guest_checkout_enabled(),
 				'social_login'    => array(
 					'google' => ! empty( Settings::google_client_ids() ),

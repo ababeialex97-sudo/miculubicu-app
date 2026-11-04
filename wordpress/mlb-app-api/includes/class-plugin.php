@@ -28,6 +28,7 @@ class Plugin {
 			}
 		);
 		Product_Fields::init();
+		Packaging::init();
 		Order_Status::init();
 		Coupons::init();
 		Loyalty::init();

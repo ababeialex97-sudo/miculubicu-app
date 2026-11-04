@@ -10,6 +10,7 @@ use MLB\AppApi\Distance_Pricing;
 use MLB\AppApi\Loyalty;
 use MLB\AppApi\Loyalty_Rules;
 use MLB\AppApi\Maps;
+use MLB\AppApi\Packaging;
 use MLB\AppApi\Rest\Menu_Controller;
 use MLB\AppApi\Settings;
 
@@ -40,6 +41,8 @@ class Settings_Page {
 		}
 		$methods = self::shipping_methods();
 		$loyalty = Loyalty::settings();
+		$packing = Packaging::settings();
+		$simple  = self::simple_products();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
 		$saved = isset( $_GET['saved'] );
 		?>
@@ -126,6 +129,47 @@ class Settings_Page {
 						<td>
 							<?php self::method_select( 'pickup_instance_id', 'mlb-pickup-method', Settings::OPTION_PICKUP_INSTANCE, $methods, 'free_shipping' ); ?>
 							<p class="description">GrandChef asociază metodele după titlu, deci trebuie să fie cele din pagina de asociere GrandChef.</p>
+						</td>
+					</tr>
+				</table>
+
+				<h2>Ambalaje și gratuități</h2>
+				<p class="description">Ambalajul și gratuitățile intră în comandă ca produse, ca să ajungă la GrandChef pe bon. Fă-le produse simple cu ID GrandChef și vizibilitatea în catalog „Ascuns”. Pe fiecare produs din meniu setezi în editor „Bucăți la ambalaj”, „Platou”, „Pâine gratis” și „Muștar gratis”. Fără produsul pentru pachet, comenzile nu primesc ambalaj.</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="mlb-pack-product">Pachet (sacoșă + cutii)</label></th>
+						<td><?php self::product_select( 'packaging[pack_product]', 'mlb-pack-product', $packing['pack_product'], $simple ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-pack-capacity">Bucăți într-un pachet</label></th>
+						<td>
+							<input id="mlb-pack-capacity" type="number" min="1" max="100" step="1" name="packaging[capacity]" value="<?php echo esc_attr( (string) $packing['capacity'] ); ?>">
+							<p class="description">Mici, cârnăciori și cefe adunate: la 12 bucăți și 10 pe pachet se pun 2 pachete.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-platter-product">Ambalaj platou</label></th>
+						<td><?php self::product_select( 'packaging[platter_product]', 'mlb-platter-product', $packing['platter_product'], $simple ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-bread-product">Pâine (gratis)</label></th>
+						<td>
+							<?php self::product_select( 'packaging[bread_product]', 'mlb-bread-product', $packing['bread_product'], $simple ); ?>
+							<p class="description">Intră la 0 lei, câte o bucată pe felie. Fără produs, se scrie în observațiile comenzii.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mlb-mustard-product">Muștar (gratis)</label></th>
+						<td>
+							<?php self::product_select( 'packaging[mustard_product]', 'mlb-mustard-product', $packing['mustard_product'], $simple ); ?>
+							<label>porția de <input type="number" min="0" max="1000" step="1" style="width:70px" name="packaging[mustard_ml]" value="<?php echo esc_attr( (string) $packing['mustard_ml'] ); ?>" aria-label="Mililitri într-o porție de muștar"> ml</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">Reguli</th>
+						<td>
+							<label><input type="checkbox" name="packaging[at_least_one]" value="1" <?php checked( $packing['at_least_one'] ); ?>> Cel puțin un pachet la orice comandă (și fără mici sau ceafă)</label><br>
+							<label><input type="checkbox" name="packaging[pickup]" value="1" <?php checked( $packing['pickup'] ); ?>> Ambalaj și la ridicare personală</label>
 						</td>
 					</tr>
 				</table>
@@ -234,6 +278,12 @@ class Settings_Page {
 		}
 		update_option( Loyalty::OPTION, Loyalty_Rules::normalize( $loyalty ) );
 
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- normalized below.
+		$packing                 = isset( $_POST['packaging'] ) && is_array( $_POST['packaging'] ) ? wp_unslash( $_POST['packaging'] ) : array();
+		$packing['at_least_one'] = ! empty( $packing['at_least_one'] );
+		$packing['pickup']       = ! empty( $packing['pickup'] );
+		update_option( Packaging::OPTION, Packaging::normalize( $packing ) );
+
 		Menu_Controller::flush_cache();
 
 		wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::SLUG ) ) );
@@ -302,6 +352,40 @@ class Settings_Page {
 			return null;
 		}
 		return wc_format_decimal( $value, 2 );
+	}
+
+	/**
+	 * Simple products, including hidden ones, for the packaging and free extras pickers.
+	 *
+	 * @return array<int, string> Product ID => label.
+	 */
+	private static function simple_products(): array {
+		$products = wc_get_products(
+			array(
+				'type'    => 'simple',
+				'status'  => array( 'publish', 'private' ),
+				'limit'   => -1,
+				'orderby' => 'title',
+				'order'   => 'ASC',
+			)
+		);
+		$options  = array();
+		foreach ( $products as $product ) {
+			$options[ $product->get_id() ] = sprintf( '%s – %s lei (#%d)', $product->get_name(), wc_format_localized_price( (string) $product->get_price() ), $product->get_id() );
+		}
+		return $options;
+	}
+
+	/**
+	 * @param array<int, string> $products
+	 */
+	private static function product_select( string $name, string $id, int $current, array $products ): void {
+		echo '<select id="' . esc_attr( $id ) . '" name="' . esc_attr( $name ) . '">';
+		echo '<option value="0">— niciunul —</option>';
+		foreach ( $products as $product_id => $label ) {
+			echo '<option value="' . esc_attr( (string) $product_id ) . '"' . selected( $current, $product_id, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select>';
 	}
 
 	/**

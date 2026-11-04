@@ -9,6 +9,7 @@
 namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Formatter;
+use MLB\AppApi\Packaging;
 use MLB\AppApi\Product_Fields;
 
 defined( 'ABSPATH' ) || exit;
@@ -135,6 +136,7 @@ class Menu_Controller {
 			'category_ids'      => array_map( 'intval', $product->get_category_ids() ),
 			'variations'        => $variations,
 			'preference_options' => Product_Fields::preference_options( $product ),
+			'packaging'          => Packaging::product_rules( $product ),
 		);
 	}
 

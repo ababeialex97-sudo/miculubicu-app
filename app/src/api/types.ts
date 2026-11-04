@@ -32,6 +32,36 @@ export type Product = {
   category_ids: number[];
   variations: Variation[];
   preference_options: string[];
+  // Missing on sites still running an older mlb-app-api.
+  packaging?: PackagingRules;
+};
+
+/** Per unit ordered: pieces it takes in a pack, whether it is a platter, free bread slices and mustard portions. */
+export type PackagingRules = {
+  units: number;
+  platter: boolean;
+  bread: number;
+  mustard: number;
+};
+
+export type PackagingConfig = {
+  // Pieces (mici, cefe…) that fit in one pack.
+  capacity: number;
+  pack_price: string;
+  // Null when there is no platter box.
+  platter_price: string | null;
+  at_least_one: boolean;
+  // Whether pickup orders pay for packaging too.
+  pickup: boolean;
+  mustard_ml: number;
+};
+
+export type OrderExtras = {
+  packs: number;
+  platters: number;
+  packaging_total: string;
+  bread: number;
+  mustard_ml: number;
 };
 
 export type Category = {
@@ -81,6 +111,8 @@ export type Config = {
   // Missing on sites still running an older mlb-app-api.
   guest_checkout?: boolean;
   social_login?: { google: boolean; apple: boolean };
+  // Null or missing when packaging isn't charged.
+  packaging?: PackagingConfig | null;
 };
 
 export type Address = {
@@ -141,6 +173,7 @@ export type Order = {
   distance_km?: number | null;
   // When the courier should arrive, set as the order leaves the restaurant.
   eta_at?: string | null;
+  extras?: OrderExtras;
 };
 
 export type NewOrder = {

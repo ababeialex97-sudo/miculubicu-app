@@ -238,6 +238,7 @@
 				} )
 			),
 			order.note ? el( 'p', { class: 'mlb-note', text: order.note } ) : null,
+			extrasLine( order.extras ) ? el( 'p', { class: 'mlb-muted', text: extrasLine( order.extras ) } ) : null,
 			parseFloat( order.discount_total ) > 0
 				? el( 'p', { class: 'mlb-discount' }, [
 					el( 'span', { text: 'Reducere ' + order.coupon_codes.join( ', ' ).toUpperCase() } ),
@@ -255,6 +256,30 @@
 			] ),
 			actions.length ? el( 'div', { class: 'mlb-actions' }, actions ) : null,
 		] );
+	}
+
+	// "2 pachete, 1 platou · gratis: 12 felii pâine, 240 ml muștar"; older orders have no extras.
+	function extrasLine( extras ) {
+		if ( ! extras ) {
+			return '';
+		}
+		var packing = [];
+		if ( extras.packs ) {
+			packing.push( extras.packs + ( 1 === extras.packs ? ' pachet' : ' pachete' ) );
+		}
+		if ( extras.platters ) {
+			packing.push( extras.platters + ( 1 === extras.platters ? ' platou' : ' platouri' ) );
+		}
+		var free = [];
+		if ( extras.bread ) {
+			free.push( extras.bread + ' felii pâine' );
+		}
+		if ( extras.mustard_ml ) {
+			free.push( extras.mustard_ml + ' ml muștar' );
+		}
+		return [ packing.length ? 'Ambalaj: ' + packing.join( ', ' ) : '', free.length ? 'Gratis: ' + free.join( ', ' ) : '' ]
+			.filter( Boolean )
+			.join( ' · ' );
 	}
 
 	function render() {
