@@ -9,6 +9,7 @@ use MLB\AppApi\Delivery_Quote;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Order_Status;
 use MLB\AppApi\Settings;
+use MLB\AppApi\Site_Orders;
 use MLB\AppApi\Statuses;
 
 defined( 'ABSPATH' ) || exit;
@@ -104,6 +105,10 @@ class Admin_Orders_Controller {
 			)
 		);
 
+		// Website orders too, so the kitchen sees every order in one place.
+		$orders = array_merge( $orders, Site_Orders::since( $since ) );
+		usort( $orders, static fn ( \WC_Order $a, \WC_Order $b ): int => $b->get_date_created() <=> $a->get_date_created() );
+
 		if ( 'active' === $scope ) {
 			$orders = array_filter( $orders, static fn ( \WC_Order $order ): bool => ! Statuses::is_final( Statuses::for_order( $order ) ) );
 		}
@@ -145,7 +150,7 @@ class Admin_Orders_Controller {
 	 */
 	private static function app_order( int $id ) {
 		$order = wc_get_order( $id );
-		if ( ! $order instanceof \WC_Order || 'app' !== $order->get_meta( '_mlb_source' ) ) {
+		if ( ! $order instanceof \WC_Order || ( 'app' !== $order->get_meta( '_mlb_source' ) && ! Site_Orders::is_site_order( $order ) ) ) {
 			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
 		}
 		return $order;
@@ -163,6 +168,7 @@ class Admin_Orders_Controller {
 		return array_merge(
 			$data,
 			array(
+				'source'        => 'app' === $order->get_meta( '_mlb_source' ) ? 'app' : 'site',
 				'customer_name' => trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ),
 				'location_name' => $location ? (string) $location['name'] : '',
 				'note'          => $order->get_customer_note(),

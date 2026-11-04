@@ -303,6 +303,7 @@
 			el( 'header', { class: 'mlb-card-head' }, [
 				el( 'strong', { text: '#' + order.number } ),
 				el( 'span', { class: 'mlb-badge', text: config.statuses[ order.status ] } ),
+				order.source === 'site' ? el( 'span', { class: 'mlb-badge mlb-badge-site', text: 'Site' } ) : null,
 				el( 'span', { class: 'mlb-muted', text: minutesAgo( order.created_at ) } ),
 			] ),
 			el( 'p', { class: 'mlb-who' }, [

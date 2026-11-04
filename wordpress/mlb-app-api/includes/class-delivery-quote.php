@@ -127,6 +127,7 @@ class Delivery_Quote {
 			return;
 		}
 
+		self::locate_order( $order );
 		$drive = self::eta_minutes( $order, $ready ) ?? self::drive_guess( $order );
 		$order->update_meta_data( self::DRIVE_META, $drive );
 		$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, $ready + $drive * MINUTE_IN_SECONDS ) );
@@ -145,6 +146,34 @@ class Delivery_Quote {
 		}
 		$order->update_meta_data( self::PREP_META, (int) $order->get_meta( self::PREP_META ) + $minutes );
 		$order->add_order_note( sprintf( 'Întârziere anunțată clientului: +%d min.', $minutes ) );
+	}
+
+	/**
+	 * Website orders have no map point: finds it from the shipping address (cached like the
+	 * app's quotes), so the drive can be timed.
+	 */
+	private static function locate_order( \WC_Order $order ): void {
+		if ( is_array( $order->get_meta( self::DEST_META ) ) ) {
+			return;
+		}
+		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
+		if ( ! $location ) {
+			return;
+		}
+		$quote = self::quote(
+			$location,
+			array(
+				'address_1' => $order->get_shipping_address_1() ?: $order->get_billing_address_1(),
+				'address_2' => $order->get_shipping_address_2() ?: $order->get_billing_address_2(),
+				'city'      => $order->get_shipping_city() ?: $order->get_billing_city(),
+			)
+		);
+		if ( ! empty( $quote['point'] ) ) {
+			$order->update_meta_data( self::DEST_META, $quote['point'] );
+		}
+		if ( null !== $quote['distance_km'] ) {
+			$order->update_meta_data( self::DISTANCE_META, $quote['distance_km'] );
+		}
 	}
 
 	/**

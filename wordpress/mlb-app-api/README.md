@@ -102,6 +102,8 @@ Aplicația primește de la Google sau Apple un ID token semnat (JWT RS256). Plug
 
 ## Panoul pentru personal
 
+Panoul arată și comenzile de pe site (cu eticheta „Site”), ca bucătăria să le vadă pe toate într-un loc. Site-ul nu are alegere de punct de lucru, așa că o comandă de pe site primește primul punct de lucru care face livrare sau ridicare, după metoda aleasă la finalizare. Clientul de pe site primește emailurile WooCommerce; notificare push primește doar dacă are cont și aplicația.
+
 În WordPress, sub **WooCommerce** apar două pagini noi:
 
 - **Comenzi aplicație**: comenzile deschise din aplicație, cu clientul, telefonul, adresa, produsele cu preferințele lor, observațiile, totalul și dacă au ajuns la GrandChef (`_gc_order_id`). Butoanele mută comanda la pasul următor: Acceptă → Pune pe jar → Plecată la client / Gata de ridicare → Finalizată, plus Anulează. Pagina se reîncarcă singură la 20 de secunde și sună scurt la o comandă nouă. Filtrul de sus arată doar un punct de lucru sau toate comenzile de azi. Acces: utilizatorii care pot edita comenzi (`edit_shop_orders`), de exemplu Shop Manager.

@@ -80,7 +80,7 @@ class Order_Status {
 	}
 
 	public static function sync_from_woocommerce( int $order_id, \WC_Order $order ): void {
-		if ( self::$syncing || 'app' !== $order->get_meta( '_mlb_source' ) ) {
+		if ( self::$syncing || ! in_array( $order->get_meta( '_mlb_source' ), array( 'app', Site_Orders::SOURCE ), true ) ) {
 			return;
 		}
 
