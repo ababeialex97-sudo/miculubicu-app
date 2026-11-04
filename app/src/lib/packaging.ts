@@ -12,8 +12,9 @@ export type PackagingSummary = {
 
 /**
  * Packs, platter boxes and free extras for the cart, the same way mlb-app-api counts them
- * (Packaging_Rules): a pack holds `capacity` pieces across products, platters bring their
- * own box, and bread and mustard come per piece. Null when packaging isn't charged.
+ * (Packaging_Rules): a pack holds `capacity` pieces of one box (mici and cefe never share),
+ * platters bring their own box, and bread and mustard come per piece. Null when packaging
+ * isn't charged.
  */
 export function packagingSummary(
   config: PackagingConfig | null | undefined,
@@ -24,12 +25,13 @@ export function packagingSummary(
     return null;
   }
 
-  let units = 0;
+  const units = new Map<string, number>();
   let platters = 0;
   let bread = 0;
   let mustard = 0;
   for (const { quantity, rules } of lines) {
-    units += (rules?.units ?? 0) * quantity;
+    const box = rules?.box || '-';
+    units.set(box, (units.get(box) ?? 0) + (rules?.units ?? 0) * quantity);
     platters += rules?.platter ? quantity : 0;
     bread += (rules?.bread ?? 0) * quantity;
     mustard += (rules?.mustard ?? 0) * quantity;
@@ -38,7 +40,10 @@ export function packagingSummary(
     platters = 0;
   }
 
-  let packs = Math.ceil(units / Math.max(1, config.capacity));
+  let packs = 0;
+  for (const count of units.values()) {
+    packs += Math.ceil(count / Math.max(1, config.capacity));
+  }
   // Fries or sauces alone still leave in a bag; a platter has its own box.
   if (packs === 0 && platters === 0 && config.at_least_one && lines.length > 0) {
     packs = 1;

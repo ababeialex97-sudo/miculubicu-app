@@ -134,7 +134,7 @@ class Settings_Page {
 				</table>
 
 				<h2>Ambalaje și gratuități</h2>
-				<p class="description">Ambalajul și gratuitățile intră în comandă ca produse, ca să ajungă la GrandChef pe bon. Fă-le produse simple cu ID GrandChef și vizibilitatea în catalog „Ascuns”. Pe fiecare produs din meniu setezi în editor „Bucăți la ambalaj”, „Platou”, „Pâine gratis” și „Muștar gratis”. Fără produsul pentru pachet, comenzile nu primesc ambalaj.</p>
+				<p class="description">Ambalajul și gratuitățile intră în comandă ca produse, ca să ajungă la GrandChef pe bon. Fă-le produse simple cu ID GrandChef și vizibilitatea în catalog „Ascuns”. Pe fiecare produs din meniu setezi în editor „Bucăți la ambalaj”, „Cutie”, „Platou”, „Pâine gratis” și „Muștar gratis”. Se aplică în aplicație și pe site. Fără produsul pentru pachet, comenzile nu primesc ambalaj.</p>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><label for="mlb-pack-product">Pachet (sacoșă + cutii)</label></th>
@@ -144,7 +144,7 @@ class Settings_Page {
 						<th scope="row"><label for="mlb-pack-capacity">Bucăți într-un pachet</label></th>
 						<td>
 							<input id="mlb-pack-capacity" type="number" min="1" max="100" step="1" name="packaging[capacity]" value="<?php echo esc_attr( (string) $packing['capacity'] ); ?>">
-							<p class="description">Mici, cârnăciori și cefe adunate: la 12 bucăți și 10 pe pachet se pun 2 pachete.</p>
+							<p class="description">Pe cutie: micii și cefele nu stau împreună. 12 mici = 2 pachete; 8 mici + 4 cefe = 2 pachete.</p>
 						</td>
 					</tr>
 					<tr>

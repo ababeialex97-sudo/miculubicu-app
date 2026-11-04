@@ -18,6 +18,7 @@ class Packaging {
 	public const EXTRA_META = '_mlb_extra';
 
 	public const UNITS_META   = '_mlb_pack_units';
+	public const BOX_META     = '_mlb_pack_box';
 	public const PLATTER_META = '_mlb_platter';
 	public const BREAD_META   = '_mlb_free_bread';
 	public const MUSTARD_META = '_mlb_free_mustard';
@@ -79,14 +80,16 @@ class Packaging {
 	}
 
 	/**
-	 * Pieces, platter flag and free extras for one product, per unit. Variations use their product's values.
+	 * Pieces, box, platter flag and free extras for one product, per unit. Variations use their product's values.
 	 *
-	 * @return array{units: int, platter: bool, bread: int, mustard: int}
+	 * @return array{units: int, box: string, platter: bool, bread: int, mustard: int}
 	 */
 	public static function product_rules( \WC_Product $product ): array {
 		$id = $product->get_parent_id() ?: $product->get_id();
 		return array(
 			'units'   => max( 0, (int) get_post_meta( $id, self::UNITS_META, true ) ),
+			// "Ceafă" and "ceafa" are the same box.
+			'box'     => Packaging_Rules::box_key( remove_accents( (string) get_post_meta( $id, self::BOX_META, true ) ) ),
 			'platter' => 'yes' === get_post_meta( $id, self::PLATTER_META, true ),
 			'bread'   => max( 0, (int) get_post_meta( $id, self::BREAD_META, true ) ),
 			'mustard' => max( 0, (int) get_post_meta( $id, self::MUSTARD_META, true ) ),
@@ -134,23 +137,75 @@ class Packaging {
 	 * @param array{packs: int, platters: int, bread: int, mustard: int, mustard_ml: int} $summary
 	 */
 	public static function add_to_order( \WC_Order $order, array $summary ): void {
+		foreach ( self::wanted_lines( $summary ) as $type => $line ) {
+			self::add_line( $order, $line['product'], $line['quantity'], $type, $line['free'] );
+		}
+		self::record_freebies( $order, $summary );
+	}
+
+	/**
+	 * The packaging and free extras lines an order should have, by type.
+	 *
+	 * @param array{packs: int, platters: int, bread: int, mustard: int} $summary
+	 * @return array<string, array{product: int, quantity: int, free: bool}>
+	 */
+	public static function wanted_lines( array $summary ): array {
+		$settings = self::settings();
+		$lines    = array(
+			'pack'    => array( $settings['pack_product'], $summary['packs'], false ),
+			'platter' => array( $settings['platter_product'], $summary['platters'], false ),
+			'bread'   => array( $settings['bread_product'], $summary['bread'], true ),
+			'mustard' => array( $settings['mustard_product'], $summary['mustard'], true ),
+		);
+
+		$wanted = array();
+		foreach ( $lines as $type => list( $product_id, $quantity, $free ) ) {
+			if ( $quantity > 0 && self::product( $product_id ) ) {
+				$wanted[ $type ] = array(
+					'product'  => $product_id,
+					'quantity' => $quantity,
+					'free'     => $free,
+				);
+			}
+		}
+		return $wanted;
+	}
+
+	/**
+	 * Keeps the free extras on the order for the app, and writes the ones without a product
+	 * of their own in the note GrandChef sends to the kitchen.
+	 *
+	 * @param array{bread: int, mustard: int, mustard_ml: int} $summary
+	 */
+	public static function record_freebies( \WC_Order $order, array $summary ): void {
 		$settings = self::settings();
 		$order->update_meta_data( self::ORDER_BREAD_META, $summary['bread'] );
 		$order->update_meta_data( self::ORDER_MUSTARD_META, $summary['mustard_ml'] );
 
-		self::add_line( $order, $settings['pack_product'], $summary['packs'], 'pack', false );
-		self::add_line( $order, $settings['platter_product'], $summary['platters'], 'platter', false );
-
 		$for_kitchen = array();
-		if ( ! self::add_line( $order, $settings['bread_product'], $summary['bread'], 'bread', true ) && $summary['bread'] > 0 ) {
+		if ( $summary['bread'] > 0 && ! self::product( $settings['bread_product'] ) ) {
 			$for_kitchen[] = sprintf( '%d felii de pâine', $summary['bread'] );
 		}
-		if ( ! self::add_line( $order, $settings['mustard_product'], $summary['mustard'], 'mustard', true ) && $summary['mustard'] > 0 ) {
+		if ( $summary['mustard'] > 0 && ! self::product( $settings['mustard_product'] ) ) {
 			$for_kitchen[] = sprintf( '%d ml muștar', $summary['mustard_ml'] );
 		}
 		if ( $for_kitchen ) {
 			$order->set_customer_note( trim( $order->get_customer_note() . "\nGratuit: " . implode( ', ', $for_kitchen ) ) );
 		}
+	}
+
+	/**
+	 * "16 felii de pâine și 320 ml de muștar", or '' when there is nothing free.
+	 */
+	public static function freebies_label( int $bread, int $mustard_ml ): string {
+		$parts = array();
+		if ( $bread > 0 ) {
+			$parts[] = sprintf( '%d %s de pâine', $bread, 1 === $bread ? 'felie' : ( $bread < 20 ? 'felii' : 'de felii' ) );
+		}
+		if ( $mustard_ml > 0 ) {
+			$parts[] = sprintf( '%d ml de muștar', $mustard_ml );
+		}
+		return implode( ' și ', $parts );
 	}
 
 	/**
@@ -206,13 +261,22 @@ class Packaging {
 			array(
 				'id'                => self::UNITS_META,
 				'label'             => 'Bucăți la ambalaj',
-				'description'       => 'Câte bucăți ocupă în cutia de mici/ceafă: 1 pentru un mic sau o ceafă, 5 pentru o porție de 5 mici, 0 dacă nu intră în cutie.',
+				'description'       => 'Câte bucăți ocupă în cutie: 1 pentru un mic sau o ceafă, 5 pentru o porție de 5 mici, 0 dacă nu intră în cutie (cartofi, sosuri).',
 				'desc_tip'          => true,
 				'type'              => 'number',
 				'custom_attributes' => array(
 					'min'  => '0',
 					'step' => '1',
 				),
+			)
+		);
+		woocommerce_wp_text_input(
+			array(
+				'id'          => self::BOX_META,
+				'label'       => 'Cutie',
+				'placeholder' => 'mici',
+				'description' => 'În ce cutie intră: „mici” sau „ceafă”. Produsele cu aceeași cutie se pun împreună (până la capacitatea din Setări aplicație), cele cu cutii diferite separat.',
+				'desc_tip'    => true,
 			)
 		);
 		woocommerce_wp_checkbox(
@@ -259,6 +323,7 @@ class Packaging {
 		foreach ( array( self::UNITS_META, self::BREAD_META, self::MUSTARD_META ) as $key ) {
 			$product->update_meta_data( $key, absint( $_POST[ $key ] ?? 0 ) );
 		}
+		$product->update_meta_data( self::BOX_META, sanitize_text_field( wp_unslash( $_POST[ self::BOX_META ] ?? '' ) ) );
 		$product->update_meta_data( self::PLATTER_META, empty( $_POST[ self::PLATTER_META ] ) ? 'no' : 'yes' );
 		// phpcs:enable
 	}

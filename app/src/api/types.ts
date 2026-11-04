@@ -36,9 +36,11 @@ export type Product = {
   packaging?: PackagingRules;
 };
 
-/** Per unit ordered: pieces it takes in a pack, whether it is a platter, free bread slices and mustard portions. */
+/** Per unit ordered: pieces it takes in its box, which box, whether it is a platter, free bread slices and mustard portions. */
 export type PackagingRules = {
   units: number;
+  // Products with the same box share packs ("mici", "ceafa"); different boxes never do.
+  box: string;
   platter: boolean;
   bread: number;
   mustard: number;

@@ -7,14 +7,19 @@ import type { PackagingConfig, PackagingRules } from '../api/types.ts';
 import { freebiesLabel, packagingLabel, packagingSummary } from './packaging.ts';
 
 const config: PackagingConfig = { capacity: 10, pack_price: '3.50', platter_price: '10.00', at_least_one: true, pickup: true, mustard_ml: 20 };
-const mic: PackagingRules = { units: 1, platter: false, bread: 1, mustard: 1 };
-const ceafa: PackagingRules = { units: 1, platter: false, bread: 2, mustard: 2 };
-const cartofi: PackagingRules = { units: 0, platter: false, bread: 0, mustard: 0 };
-const platou: PackagingRules = { units: 0, platter: true, bread: 0, mustard: 0 };
+const mic: PackagingRules = { units: 1, box: 'mici', platter: false, bread: 1, mustard: 1 };
+const ceafa: PackagingRules = { units: 1, box: 'ceafa', platter: false, bread: 2, mustard: 2 };
+const cartofi: PackagingRules = { units: 0, box: '-', platter: false, bread: 0, mustard: 0 };
+const platou: PackagingRules = { units: 0, box: '-', platter: true, bread: 0, mustard: 0 };
 
 test('8 mici and 4 cefe need 2 packs', () => {
   const summary = packagingSummary(config, [{ quantity: 8, rules: mic }, { quantity: 4, rules: ceafa }], 'delivery');
   assert.deepEqual(summary, { packs: 2, platters: 0, totalBani: 700, bread: 16, mustardMl: 320 });
+});
+
+test('mici and cefe never share a box', () => {
+  assert.equal(packagingSummary(config, [{ quantity: 3, rules: mic }, { quantity: 2, rules: ceafa }], 'delivery')?.packs, 2);
+  assert.equal(packagingSummary(config, [{ quantity: 15, rules: mic }, { quantity: 12, rules: ceafa }], 'delivery')?.packs, 4);
 });
 
 test('pack edges', () => {

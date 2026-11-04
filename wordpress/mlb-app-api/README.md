@@ -149,9 +149,11 @@ Ambalajul se plătește, iar pâinea și muștarul vin gratuit. Toate intră în
 Configurare:
 1. Creezi produse simple pentru **pachet** (sacoșă + cutie + cutie cartofi, 3,5 lei), **ambalaj platou** (10 lei), **pâine** și **muștar**. Fiecare are ID GrandChef și cotă TVA, iar vizibilitatea în catalog e „Ascuns”, ca să nu apară în meniu.
 2. În **WooCommerce › Setări aplicație › Ambalaje și gratuități** le alegi și setezi câte bucăți încap într-un pachet (10) și mărimea porției de muștar (20 ml).
-3. Pe fiecare produs din meniu, în editor: **Bucăți la ambalaj** (1 la un mic, o ceafă sau un cârnăcior; 5 la o porție de 5 mici; 0 la cartofi și sosuri), **Platou**, **Pâine gratis (felii)** și **Muștar gratis (porții)**.
+3. Pe fiecare produs din meniu, în editor: **Bucăți la ambalaj** (1 la un mic, o ceafă sau un cârnăcior; 0 la cartofi și sosuri), **Cutie** („mici” sau „ceafă”), **Platou**, **Pâine gratis (felii)** și **Muștar gratis (porții)**.
 
-Calcul: pachete = bucățile adunate din toată comanda, împărțite la capacitate și rotunjite în sus (8 mici + 4 cefe = 12 bucăți = 2 pachete). Fiecare platou are ambalajul lui. Opțional, orice comandă primește minim un pachet, iar la ridicare se poate scuti ambalajul. Ambalajul intră după cupoane, deci reducerile nu se aplică la el, iar pragul de livrare gratuită se uită doar la mâncare. Pâinea și muștarul intră la 0 lei; fără produse alese pentru ele, se scriu în observațiile comenzii trimise la GrandChef.
+Calcul: pentru fiecare cutie, bucățile se adună și se împart la capacitate, rotunjit în sus; micii și cefele nu stau în aceeași cutie (12 mici = 2 pachete, 8 mici + 4 cefe = 2 pachete). Fiecare platou are ambalajul lui. Opțional, orice comandă primește minim un pachet, iar la ridicare se poate scuti ambalajul. Ambalajul intră după cupoane, deci reducerile nu se aplică la el, iar pragul de livrare gratuită se uită doar la mâncare. Pâinea și muștarul intră la 0 lei; fără produse alese pentru ele, se scriu în observațiile comenzii trimise la GrandChef.
+
+Pe site, ambalajul și gratuitățile apar singure în coș, iar clientul nu le poate scoate sau modifica; în coș și la finalizare apare rândul „Din partea casei”.
 
 Fără produsul pentru pachet ales în setări, nu se adaugă nimic (comportamentul de până acum).
 

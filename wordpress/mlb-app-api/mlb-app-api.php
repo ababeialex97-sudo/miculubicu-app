@@ -30,6 +30,7 @@ require_once __DIR__ . '/includes/class-formatter.php';
 require_once __DIR__ . '/includes/class-product-fields.php';
 require_once __DIR__ . '/includes/class-packaging-rules.php';
 require_once __DIR__ . '/includes/class-packaging.php';
+require_once __DIR__ . '/includes/class-packaging-cart.php';
 require_once __DIR__ . '/includes/class-push-messages.php';
 require_once __DIR__ . '/includes/class-push.php';
 require_once __DIR__ . '/includes/class-order-status.php';
