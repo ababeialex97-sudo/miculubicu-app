@@ -134,7 +134,7 @@ class Settings_Page {
 				</table>
 
 				<h2>Ambalaje și gratuități</h2>
-				<p class="description">Ambalajul și gratuitățile intră în comandă ca produse, ca să ajungă la GrandChef pe bon. Fă-le produse simple cu ID GrandChef și vizibilitatea în catalog „Ascuns”. Pe fiecare produs din meniu setezi în editor „Bucăți la ambalaj”, „Cutie”, „Platou”, „Pâine gratis” și „Muștar gratis”. Se aplică în aplicație și pe site. Fără produsul pentru pachet, comenzile nu primesc ambalaj.</p>
+				<p class="description">Ambalajul și gratuitățile intră în comandă ca produse, ca să ajungă la GrandChef pe bon. Pachetul și platoul sunt produse simple cu ID GrandChef și vizibilitatea în catalog „Ascuns”; pâinea și muștarul pot fi chiar produsele din meniu, care se vând în continuare normal. Pe fiecare produs din meniu setezi în editor „Bucăți la ambalaj”, „Cutie”, „Platou”, „Pâine gratis” și „Muștar gratis”. Se aplică în aplicație și pe site. Fără produsul pentru pachet, comenzile nu primesc ambalaj.</p>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><label for="mlb-pack-product">Pachet (sacoșă + cutii)</label></th>
@@ -155,7 +155,7 @@ class Settings_Page {
 						<th scope="row"><label for="mlb-bread-product">Pâine (gratis)</label></th>
 						<td>
 							<?php self::product_select( 'packaging[bread_product]', 'mlb-bread-product', $packing['bread_product'], $simple ); ?>
-							<p class="description">Intră la 0 lei, câte o bucată pe felie. Fără produs, se scrie în observațiile comenzii.</p>
+							<p class="description">Intră la 0 lei, câte o bucată pe felie; produsul rămâne de vânzare la prețul lui. Fără produs, se scrie în observațiile comenzii.</p>
 						</td>
 					</tr>
 					<tr>

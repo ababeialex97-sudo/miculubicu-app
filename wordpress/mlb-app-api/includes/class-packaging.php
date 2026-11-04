@@ -74,9 +74,13 @@ class Packaging {
 	/**
 	 * The packaging and free extras products can't be ordered on their own.
 	 */
+	/**
+	 * The pack and platter products: hidden, only ever added by this plugin. Bread and mustard
+	 * are left out on purpose, since they can also be menu products the customer pays for.
+	 */
 	public static function is_extra_product( int $product_id ): bool {
 		$settings = self::settings();
-		return $product_id > 0 && in_array( $product_id, array( $settings['pack_product'], $settings['platter_product'], $settings['bread_product'], $settings['mustard_product'] ), true );
+		return $product_id > 0 && in_array( $product_id, array( $settings['pack_product'], $settings['platter_product'] ), true );
 	}
 
 	/**
