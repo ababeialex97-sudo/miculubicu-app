@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder, useDeliveryQuote, useMenu } from '@/api/hooks';
 import type { CartPreviewRequest, DeliveryQuote, DeliveryQuoteRequest, NewOrder } from '@/api/types';
+import { AddressSearch } from '@/components/address-search';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
@@ -68,8 +69,11 @@ export default function CartScreen() {
   const street = useDebouncedValue(cart.address.address_1.trim(), 900);
   const city = useDebouncedValue(cart.address.city.trim(), 900);
   const quoteRequest = useMemo<DeliveryQuoteRequest | null>(
-    () => (distancePricing && location && street.length >= 3 ? { location_id: location.id, address: { address_1: street, city } } : null),
-    [distancePricing, location, street, city],
+    () =>
+      distancePricing && location && street.length >= 3
+        ? { location_id: location.id, address: { address_1: street, city, lat: cart.address.lat, lng: cart.address.lng } }
+        : null,
+    [distancePricing, location, street, city, cart.address.lat, cart.address.lng],
   );
   const quote = useDeliveryQuote(quoteRequest);
   const quoteData = quoteRequest ? quote.data : undefined;
@@ -301,9 +305,20 @@ export default function CartScreen() {
 
         {isDelivery ? (
           <View style={{ gap: 12 }}>
-            <Field label="Adresa de livrare" placeholder="Strada, numărul" value={cart.address.address_1} onChangeText={(address_1) => cart.setAddress({ address_1 })} autoComplete="street-address" error={errors.address_1} />
+            {location ? (
+              <AddressSearch
+                locationId={location.id}
+                value={cart.address.address_1}
+                located={cart.address.lat !== undefined}
+                onType={(address_1) => cart.setAddress({ address_1, lat: undefined, lng: undefined })}
+                onPick={(place) => cart.setAddress({ address_1: place.address_1, city: place.city || cart.address.city, lat: place.precise ? place.lat : undefined, lng: place.precise ? place.lng : undefined })}
+                error={errors.address_1}
+              />
+            ) : (
+              <Field label="Adresa de livrare" placeholder="Strada, numărul" value={cart.address.address_1} onChangeText={(address_1) => cart.setAddress({ address_1 })} autoComplete="street-address" error={errors.address_1} />
+            )}
             <Field label="Bloc, scară, apartament (opțional)" value={cart.address.address_2} onChangeText={(address_2) => cart.setAddress({ address_2 })} />
-            <Field label="Localitatea" value={cart.address.city} onChangeText={(city) => cart.setAddress({ city })} error={errors.city} />
+            <Field label="Localitatea" value={cart.address.city} onChangeText={(city) => cart.setAddress({ city, lat: undefined, lng: undefined })} error={errors.city} />
             {distancePricing ? (
               <DeliveryHint
                 loading={quoteRequest !== null && quote.isFetching}

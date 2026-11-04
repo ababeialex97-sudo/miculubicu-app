@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ORDER_TOKEN_HEADER, api } from '@/api/client';
-import type { CartPreview, CartPreviewRequest, Config, Customer, DeliveryQuote, DeliveryQuoteRequest, GuestOrder, Loyalty, Menu, NewGuestOrder, NewOrder, Order, Session } from '@/api/types';
+import type { CartPreview, CartPreviewRequest, Config, Customer, DeliveryQuote, DeliveryQuoteRequest, GuestOrder, Loyalty, Menu, NewGuestOrder, NewOrder, Order, Place, PlaceSuggestion, Session } from '@/api/types';
 import { guestTokenFor } from '@/lib/guest';
 import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
@@ -15,6 +15,7 @@ export const queryKeys = {
   loyalty: ['loyalty'] as const,
   cartPreview: (request: CartPreviewRequest) => ['cart-preview', request] as const,
   deliveryQuote: (request: DeliveryQuoteRequest) => ['delivery-quote', request] as const,
+  places: (q: string, locationId: string) => ['places', locationId, q] as const,
 };
 
 // Order statuses only change when staff update them, so a slow poll is enough
@@ -194,4 +195,23 @@ export function useDeliveryQuote(request: DeliveryQuoteRequest | null) {
     placeholderData: keepPreviousData,
     retry: 1,
   });
+}
+
+/**
+ * Address suggestions for what the customer is typing. The session token groups the typing
+ * and the final choice, which Google bills as one search.
+ */
+export function usePlaceSuggestions(q: string, locationId: string, session: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.places(q, locationId),
+    queryFn: () => api<PlaceSuggestion[]>(`/delivery/places?q=${encodeURIComponent(q)}&location_id=${encodeURIComponent(locationId)}&session=${session}`),
+    enabled: enabled && q.length >= 3,
+    staleTime: 60 * 60_000,
+    placeholderData: keepPreviousData,
+    retry: 0,
+  });
+}
+
+export function fetchPlace(placeId: string, session: string) {
+  return api<Place>(`/delivery/places/${encodeURIComponent(placeId)}?session=${session}`);
 }

@@ -37,6 +37,8 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | POST | `/orders/guest/{id}/push-token` | header `X-MLB-Order-Token` | Notificări push pentru o comandă fără cont |
 | POST | `/orders/claim` | token | Mută în cont comenzile fără cont de pe telefon (istoric + ștampile pentru cele deja finalizate) |
 | GET | `/loyalty` | token | Cardul de fidelitate (ștampile) și cupoanele pe care clientul le poate folosi |
+| GET | `/delivery/places?q=…&session=…` | – | Sugestii de adrese Google pentru ce scrie clientul, cele apropiate de punctul de lucru întâi (`location_id` opțional) |
+| GET | `/delivery/places/{place_id}?session=…` | – | Sugestia aleasă ca adresă: `address_1`, `city`, `lat`, `lng`, `precise` (fals când lipsește numărul) |
 | POST | `/delivery/quote` | – | Costul livrării pentru o adresă (`location_id`, `address` cu `address_1`, `city` sau `lat`/`lng`): distanța pe drum, prețul tranșei, dacă se livrează acolo |
 | POST | `/cart/preview` | token opțional | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
@@ -133,7 +135,7 @@ Costul livrării poate depinde de distanța reală pe drum de la punctul de lucr
 
 1. **Preț după distanță**: câte un rând „până la km = lei”, de exemplu `2 = 10`, `4 = 15`, `6 = 20`. Ultimul rând e distanța maximă; mai departe aplicația spune că nu se livrează la adresa respectivă.
 2. **Coordonatele** punctului de lucru (de unde pleacă livratorul), copiate din Google Maps.
-3. **Cheia Google Maps**, dintr-un proiect Google Cloud cu **Geocoding API** și **Routes API** activate. Cheia se poate pune și în `wp-config.php`: `define( 'MLB_APP_API_MAPS_KEY', '...' );`. Nu ajunge niciodată în aplicație.
+3. **Cheia Google Maps**, dintr-un proiect Google Cloud cu **Geocoding API**, **Routes API** și **Places API (New)** activate. Cheia se poate pune și în `wp-config.php`: `define( 'MLB_APP_API_MAPS_KEY', '...' );`. Nu ajunge niciodată în aplicație.
 
 Cum funcționează:
 - în coș, după ce clientul scrie adresa, aplicația cere `/delivery/quote` și arată distanța, prețul și adresa găsită pe hartă;
@@ -143,6 +145,8 @@ Cum funcționează:
 - titlul metodei de livrare rămâne același, deci asocierea din GrandChef nu se schimbă;
 - rezultatele se păstrează 30 de zile pentru aceeași adresă, așa că o adresă se plătește la Google o singură dată.
 - **pe site** se aplică aceleași tranșe: la finalizarea comenzii, prețul metodei „Livrare la domiciliu” se schimbă după adresa scrisă de client (de la primul punct de lucru cu livrare); prea departe, rămâne doar ridicarea.
+
+**Sugestii de adrese.** Clientul nu trebuie să scrie adresa exact ca Google: în aplicație și la finalizarea comenzii pe site apare sub câmpul de stradă o listă cu adrese Google, iar alegerea uneia completează strada, numărul și localitatea. În aplicație se trimite și punctul exact, așa că distanța nu mai depinde de cum a fost scrisă adresa; pe site serverul ține minte punctul adresei alese. Dacă sugestia nu are număr, clientul e rugat să-l adauge. Scrisul fără a alege o sugestie funcționează ca înainte. Căutările se păstrează o zi, adresele alese 30 de zile, și sunt cel mult 300 de căutări pe oră de la aceeași adresă de internet.
 
 **Timpul de preparare.** În panou, comanda nouă se acceptă alegând cât durează prepararea (10, 15, 20, 30, 45 sau 60 de minute). Serverul calculează ora la care e gata și, la livrare, adaugă drumul cu traficul estimat de Google pentru ora plecării. Clientul primește în notificare și în aplicație „Ajunge în jur de 19:45” (la ridicare, „Gata de ridicare în jur de 19:30”). Dacă bucătăria are nevoie de mai mult, butoanele „+5 / +10 / +15 min” mută ora și anunță clientul. Fără Google, drumul se estimează din distanța comenzii.
 

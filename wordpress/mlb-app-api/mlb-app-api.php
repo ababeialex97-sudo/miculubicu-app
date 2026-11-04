@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MLB App API
  * Description:       REST API for the Micu' lu' Bicu mobile app (menu, customer auth, orders, push tokens).
- * Version:           0.5.3
+ * Version:           0.5.4
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MLB_APP_API_VERSION', '0.5.3' );
+define( 'MLB_APP_API_VERSION', '0.5.4' );
 define( 'MLB_APP_API_FILE', __FILE__ );
 define( 'MLB_APP_API_DIR', __DIR__ );
 
@@ -20,6 +20,7 @@ require_once __DIR__ . '/includes/class-jwt.php';
 require_once __DIR__ . '/includes/class-distance-pricing.php';
 require_once __DIR__ . '/includes/class-settings.php';
 require_once __DIR__ . '/includes/class-maps.php';
+require_once __DIR__ . '/includes/class-places.php';
 require_once __DIR__ . '/includes/class-delivery-quote.php';
 require_once __DIR__ . '/includes/class-statuses.php';
 require_once __DIR__ . '/includes/class-auth.php';

@@ -121,6 +121,27 @@ export type Address = {
   address_1: string;
   address_2: string;
   city: string;
+  // The exact point, when the customer picked the address from the suggestions.
+  lat?: number;
+  lng?: number;
+};
+
+/** One address suggestion while the customer types. */
+export type PlaceSuggestion = {
+  place_id: string;
+  main: string;
+  secondary: string;
+};
+
+/** The suggestion the customer picked, as an address. */
+export type Place = {
+  address_1: string;
+  city: string;
+  lat: number;
+  lng: number;
+  formatted_address: string;
+  // False for a bare street: the number still has to be written.
+  precise: boolean;
 };
 
 export type Customer = {
@@ -231,7 +252,7 @@ export type Loyalty = {
 
 export type DeliveryQuoteRequest = {
   location_id: string;
-  address: Pick<Address, 'address_1' | 'city'>;
+  address: Pick<Address, 'address_1' | 'city' | 'lat' | 'lng'>;
 };
 
 export type DeliveryQuote = {

@@ -1,0 +1,45 @@
+/* Address suggestions under the checkout street field. */
+.mlb-address-suggestions {
+	list-style: none;
+	margin: 4px 0 12px;
+	padding: 0;
+	border: 1px solid #ccc;
+	border-radius: 6px;
+	background: #fff;
+	color: #222;
+	overflow: hidden;
+	font-size: 14px;
+	line-height: 1.3;
+}
+.mlb-address-suggestions [role="option"] {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-height: 44px;
+	justify-content: center;
+	padding: 8px 12px;
+	cursor: pointer;
+	border-top: 1px solid #eee;
+}
+.mlb-address-suggestions [role="option"]:first-child {
+	border-top: 0;
+}
+.mlb-address-suggestions [role="option"]:hover,
+.mlb-address-suggestions [role="option"].is-active {
+	background: #f4efe6;
+}
+.mlb-address-suggestions span {
+	color: #666;
+	font-size: 13px;
+}
+.mlb-address-suggestions__credit {
+	padding: 4px 12px;
+	text-align: right;
+	font-size: 11px;
+	color: #888;
+}
+.mlb-address-hint {
+	margin: 4px 0 12px;
+	color: #b25e00;
+	font-size: 13px;
+}

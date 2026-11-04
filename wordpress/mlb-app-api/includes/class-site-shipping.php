@@ -15,6 +15,20 @@ class Site_Shipping {
 
 	public static function init(): void {
 		add_filter( 'woocommerce_package_rates', array( self::class, 'price' ), 20, 2 );
+		add_action( 'wp_enqueue_scripts', array( self::class, 'enqueue_suggestions' ) );
+	}
+
+	/**
+	 * Google address suggestions under the checkout street field, when Maps is set up.
+	 */
+	public static function enqueue_suggestions(): void {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || ! Maps::is_configured() ) {
+			return;
+		}
+		$url = plugins_url( 'assets/', MLB_APP_API_FILE );
+		wp_enqueue_style( 'mlb-address-suggestions', $url . 'address-suggestions.css', array(), MLB_APP_API_VERSION );
+		wp_enqueue_script( 'mlb-address-suggestions', $url . 'address-suggestions.js', array(), MLB_APP_API_VERSION, true );
+		wp_localize_script( 'mlb-address-suggestions', 'mlbAddressSuggestions', array( 'restUrl' => esc_url_raw( rest_url( 'mlb/v1/' ) ) ) );
 	}
 
 	/**

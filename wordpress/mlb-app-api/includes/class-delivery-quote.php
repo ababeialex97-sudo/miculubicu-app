@@ -32,7 +32,7 @@ class Delivery_Quote {
 
 	/**
 	 * @param array<string, mixed> $location
-	 * @param array<string, mixed> $address address_1, city, and optionally lat/lng from the phone's GPS.
+	 * @param array<string, mixed> $address address_1, city, and optionally lat/lng from a picked address suggestion.
 	 * @return array{mode: string, available: bool, fee: float|null, distance_km: float|null, verified: bool, formatted_address: string, message: string, point: array{lat: float, lng: float}|null}
 	 */
 	public static function quote( array $location, array $address ): array {
@@ -44,7 +44,8 @@ class Delivery_Quote {
 			return self::result( 'flat', true, $flat );
 		}
 
-		$point = self::point_from( $address );
+		$point = self::point_from( $address )
+			?? Places::remembered_point( self::street_only( (string) ( $address['address_1'] ?? '' ) ), (string) ( $address['city'] ?? '' ) );
 		$text  = self::address_text( $address );
 		if ( ! $point && '' === $text ) {
 			return self::result( 'distance', true, null, null, false, '', 'Scrie adresa ca să calculăm costul livrării.' );
@@ -305,7 +306,10 @@ class Delivery_Quote {
 		return preg_replace( '/\s+/', ' ', mb_strtolower( remove_accents( $text ) ) );
 	}
 
-	private static function is_rate_limited(): bool {
+	/**
+	 * Counts one Google call for the visitor's IP; true once they reach $limit in an hour.
+	 */
+	public static function is_rate_limited( string $bucket = 'quote', int $limit = self::LOOKUP_LIMIT ): bool {
 		$ip = '';
 		foreach ( array( 'HTTP_CF_CONNECTING_IP', 'REMOTE_ADDR' ) as $header ) {
 			if ( ! empty( $_SERVER[ $header ] ) ) {
@@ -313,9 +317,9 @@ class Delivery_Quote {
 				break;
 			}
 		}
-		$key   = 'mlb_dq_rate_' . md5( $ip );
+		$key   = 'quote' === $bucket ? 'mlb_dq_rate_' . md5( $ip ) : 'mlb_dq_rate_' . $bucket . '_' . md5( $ip );
 		$count = (int) get_transient( $key );
-		if ( $count >= self::LOOKUP_LIMIT ) {
+		if ( $count >= $limit ) {
 			return true;
 		}
 		set_transient( $key, $count + 1, HOUR_IN_SECONDS );

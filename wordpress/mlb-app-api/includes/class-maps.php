@@ -151,7 +151,7 @@ class Maps {
 	 * @param array<string, mixed>|\WP_Error $response
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	private static function request( $response ) {
+	public static function request( $response ) {
 		if ( is_wp_error( $response ) ) {
 			return new \WP_Error( 'mlb_maps_unreachable', 'Google Maps nu răspunde: ' . $response->get_error_message() );
 		}
