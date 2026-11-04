@@ -90,6 +90,10 @@ class Packaging {
 	 */
 	public static function product_rules( \WC_Product $product ): array {
 		$id = $product->get_parent_id() ?: $product->get_id();
+		if ( ! metadata_exists( 'post', $id, self::UNITS_META ) ) {
+			$parent = $product->get_parent_id() ? wc_get_product( $id ) : $product;
+			return Packaging_Rules::guess( $parent ? $parent->get_name() : $product->get_name() );
+		}
 		return array(
 			'units'   => max( 0, (int) get_post_meta( $id, self::UNITS_META, true ) ),
 			// "Ceafă" and "ceafa" are the same box.
@@ -260,10 +264,15 @@ class Packaging {
 	}
 
 	public static function render_product_fields(): void {
+		global $post;
+		// Not set up yet: show what the name suggests, saved as soon as the product is updated.
+		$guess = $post && ! metadata_exists( 'post', $post->ID, self::UNITS_META ) ? Packaging_Rules::guess( get_the_title( $post ) ) : null;
+
 		echo '<div class="options_group">';
 		woocommerce_wp_text_input(
 			array(
 				'id'                => self::UNITS_META,
+				'value'             => $guess ? (string) $guess['units'] : null,
 				'label'             => 'Bucăți la ambalaj',
 				'description'       => 'Câte bucăți ocupă în cutie: 1 pentru un mic sau o ceafă, 5 pentru o porție de 5 mici, 0 dacă nu intră în cutie (cartofi, sosuri).',
 				'desc_tip'          => true,
@@ -277,15 +286,17 @@ class Packaging {
 		woocommerce_wp_text_input(
 			array(
 				'id'          => self::BOX_META,
+				'value'       => $guess ? $guess['box'] : null,
 				'label'       => 'Cutie',
 				'placeholder' => 'mici',
-				'description' => 'În ce cutie intră: „mici” sau „ceafă”. Produsele cu aceeași cutie se pun împreună (până la capacitatea din Setări aplicație), cele cu cutii diferite separat.',
+				'description' => 'În ce cutie intră: „mici”, „carnaciori” sau „ceafa”. Produsele cu aceeași cutie se pun împreună (până la capacitatea din Setări aplicație), cele cu cutii diferite separat.',
 				'desc_tip'    => true,
 			)
 		);
 		woocommerce_wp_checkbox(
 			array(
 				'id'          => self::PLATTER_META,
+				'value'       => $guess ? ( $guess['platter'] ? 'yes' : 'no' ) : null,
 				'label'       => 'Platou',
 				'description' => 'Primește ambalajul de platou.',
 			)
@@ -293,6 +304,7 @@ class Packaging {
 		woocommerce_wp_text_input(
 			array(
 				'id'                => self::BREAD_META,
+				'value'             => $guess ? (string) $guess['bread'] : null,
 				'label'             => 'Pâine gratis (felii)',
 				'description'       => 'Felii de pâine din partea casei, la fiecare bucată comandată din acest produs.',
 				'desc_tip'          => true,
@@ -306,6 +318,7 @@ class Packaging {
 		woocommerce_wp_text_input(
 			array(
 				'id'                => self::MUSTARD_META,
+				'value'             => $guess ? (string) $guess['mustard'] : null,
 				'label'             => 'Muștar gratis (porții)',
 				'description'       => 'Porții de muștar din partea casei, la fiecare bucată comandată. Mărimea porției (ml) se setează în Setări aplicație.',
 				'desc_tip'          => true,

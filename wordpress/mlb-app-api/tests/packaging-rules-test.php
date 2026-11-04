@@ -44,6 +44,17 @@ check( 'platters alone: their boxes, no pack', 0 === $r['packs'] && 2 === $r['pl
 $r = Packaging_Rules::count( array( $line( $platou, 1 ), $line( $mic, 3 ) ), 10, true );
 check( 'platter + mici: 1 platter box + 1 pack', 1 === $r['packs'] && 1 === $r['platters'] );
 
+$g = static fn ( string $name ): array => Packaging_Rules::guess( $name );
+check( 'guess: mici oaie-porc', $mic == $g( 'Mici oaie-porc' ) );
+check( 'guess: ceafă 2 bread, 2 mustard', 'ceafa' === $g( 'Ceafă de porc la grătar' )['box'] && 2 === $g( 'Ceafă de porc la grătar' )['bread'] && 2 === $g( 'Ceafă de porc la grătar' )['mustard'] );
+check( 'guess: cârnăciori own box', 'carnaciori' === $g( 'Cârnăciori de casă' )['box'] && 1 === $g( 'Cârnăciori de casă' )['bread'] );
+check( 'guess: platou', $g( 'Platou cu mici și ceafă' )['platter'] && 0 === $g( 'Platou cu mici și ceafă' )['units'] );
+check( 'guess: cartofi nothing', 0 === $g( 'Cartofi prăjiți' )['units'] && 0 === $g( 'Cartofi prăjiți' )['bread'] );
+check( 'guess: "Micul dejun" is not mici', 0 === $g( 'Micul dejun' )['units'] );
+$cart = array( $line( $g( 'Mici oaie-porc' ), 1 ), $line( $g( 'Mici de porc' ), 2 ), $line( $g( 'Ceafă de porc la grătar' ), 1 ) );
+$r    = Packaging_Rules::count( $cart, 10, true );
+check( 'Alex cart: 3 mici + 1 ceafă = 2 packs, 5 bread, 5 mustard', 2 === $r['packs'] && 5 === $r['bread'] && 5 === $r['mustard'] );
+
 check( 'empty order: nothing', 0 === Packaging_Rules::count( array(), 10, true )['packs'] );
 
 exit( $failures > 0 ? 1 : 0 );

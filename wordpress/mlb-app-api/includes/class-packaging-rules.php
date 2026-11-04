@@ -56,6 +56,53 @@ class Packaging_Rules {
 	}
 
 	/**
+	 * Rules for a product nobody has set up yet, read from its name: mici and cârnăciori get
+	 * a slice of bread and a mustard portion per piece, ceafă two of each, platters their own
+	 * box. Anything else takes no room in a box and comes with nothing.
+	 *
+	 * @return array{units: int, box: string, platter: bool, bread: int, mustard: int}
+	 */
+	public static function guess( string $name ): array {
+		$name = mb_strtolower( strtr( $name, array( 'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ş' => 's', 'ț' => 't', 'ţ' => 't', 'Ă' => 'a', 'Â' => 'a', 'Î' => 'i', 'Ș' => 's', 'Ş' => 's', 'Ț' => 't', 'Ţ' => 't' ) ) );
+		$none = array(
+			'units'   => 0,
+			'box'     => '',
+			'platter' => false,
+			'bread'   => 0,
+			'mustard' => 0,
+		);
+
+		if ( str_contains( $name, 'platou' ) ) {
+			return array( 'platter' => true ) + $none;
+		}
+		$kinds = array(
+			'carnac' => array( 'carnaciori', 1 ),
+			'ceaf'   => array( 'ceafa', 2 ),
+		);
+		foreach ( $kinds as $needle => list( $box, $extras ) ) {
+			if ( str_contains( $name, $needle ) ) {
+				return array(
+					'units'   => 1,
+					'box'     => $box,
+					'platter' => false,
+					'bread'   => $extras,
+					'mustard' => $extras,
+				);
+			}
+		}
+		if ( preg_match( '/\bmici?\b/u', $name ) ) {
+			return array(
+				'units'   => 1,
+				'box'     => 'mici',
+				'platter' => false,
+				'bread'   => 1,
+				'mustard' => 1,
+			);
+		}
+		return $none;
+	}
+
+	/**
 	 * "Mici " and "mici" are the same box; products without a box share one.
 	 */
 	public static function box_key( string $box ): string {
