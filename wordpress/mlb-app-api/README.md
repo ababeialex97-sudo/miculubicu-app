@@ -117,6 +117,16 @@ Fiecare schimbare de status:
 - „Finalizată” și „Anulată” mută și comanda WooCommerce în `completed` / `cancelled`; invers, o comandă finalizată sau anulată direct din WooCommerce se actualizează și în aplicație. Comanda nu mai trece niciodată prin `processing`, deci GrandChef nu o primește a doua oară;
 - trimite clientului o notificare push.
 
+### Conturi pentru bucătărie
+
+Rolul **Bucătărie** vede doar „Comenzi aplicație”: acceptă comenzile, alege timpul de preparare, schimbă statusul și amână. Nu are acces la WooCommerce, produse, pagini, module sau setări.
+
+1. **Utilizatori › Adaugă utilizator**, cu rolul **Bucătărie**.
+2. Deschide utilizatorul și, la secțiunea **Bucătărie**, alege punctul de lucru. Contul vede atunci doar comenzile acelui punct; fără alegere le vede pe toate.
+3. La autentificare, contul ajunge direct în panou.
+
+Administratorii și managerii de magazin văd panoul ca înainte, în meniul WooCommerce.
+
 ## Fidelizare și promoții
 
 Totul e construit peste cupoanele WooCommerce, deci reducerile ajung la GrandChef prin opțiunea „Spread discount”, împărțite pe produse.

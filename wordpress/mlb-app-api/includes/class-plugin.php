@@ -36,6 +36,7 @@ class Plugin {
 		Loyalty::init();
 		GrandChef_Diagnostics::init();
 
+		Admin\Kitchen_Role::init();
 		if ( is_admin() ) {
 			Admin\Orders_Page::init();
 			Admin\Settings_Page::init();

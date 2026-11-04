@@ -205,8 +205,8 @@
 		return el( 'div', { class: 'mlb-toolbar' }, [
 			el( 'label', { for: 'mlb-scope', class: 'screen-reader-text', text: 'Ce comenzi' } ),
 			scopeSelect,
-			el( 'label', { for: 'mlb-location', class: 'screen-reader-text', text: 'Punct de lucru' } ),
-			locationSelect,
+			config.locations.length > 1 ? el( 'label', { for: 'mlb-location', class: 'screen-reader-text', text: 'Punct de lucru' } ) : null,
+			config.locations.length > 1 ? locationSelect : null,
 			el( 'button', { type: 'button', class: 'button', text: 'Reîncarcă', onClick: load } ),
 			config.testMode ? el( 'span', { class: 'mlb-badge mlb-badge-test', text: 'Mod de test' } ) : null,
 		] );
@@ -342,9 +342,13 @@
 				el( 'strong', { text: money( order.total ) } ),
 			] ),
 			el( 'p', { class: order.grandchef.sent ? 'mlb-gc mlb-gc-ok' : 'mlb-gc mlb-gc-missing' }, [
-				order.grandchef.sent ? 'Trimisă la GrandChef #' + order.grandchef.order_id : 'Netrimisă la GrandChef: verifică în WooCommerce',
-				' · ',
-				el( 'a', { href: order.edit_url, text: 'Deschide comanda' } ),
+				order.grandchef.sent
+					? 'Trimisă la GrandChef #' + order.grandchef.order_id
+					: order.edit_url
+					? 'Netrimisă la GrandChef: verifică în WooCommerce'
+					: 'Netrimisă la GrandChef: anunță administratorul',
+				order.edit_url ? ' · ' : null,
+				order.edit_url ? el( 'a', { href: order.edit_url, text: 'Deschide comanda' } ) : null,
 			] ),
 			timesLine( order ),
 			accepting ? acceptPicker( order, busy ) : null,

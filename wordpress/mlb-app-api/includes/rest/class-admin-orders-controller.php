@@ -5,6 +5,7 @@
 
 namespace MLB\AppApi\Rest;
 
+use MLB\AppApi\Admin\Kitchen_Role;
 use MLB\AppApi\Delivery_Quote;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Order_Status;
@@ -79,7 +80,7 @@ class Admin_Orders_Controller {
 	}
 
 	public static function can_manage(): bool {
-		return current_user_can( 'edit_shop_orders' );
+		return current_user_can( Kitchen_Role::CAP ) || current_user_can( 'edit_shop_orders' );
 	}
 
 	public function list_orders( \WP_REST_Request $request ) {
@@ -108,6 +109,12 @@ class Admin_Orders_Controller {
 		// Website orders too, so the kitchen sees every order in one place.
 		$orders = array_merge( $orders, Site_Orders::since( $since ) );
 		usort( $orders, static fn ( \WC_Order $a, \WC_Order $b ): int => $b->get_date_created() <=> $a->get_date_created() );
+
+		// A kitchen account limited to one location sees only that location's orders.
+		$only = Kitchen_Role::location_of();
+		if ( '' !== $only ) {
+			$orders = array_filter( $orders, static fn ( \WC_Order $order ): bool => (string) $order->get_meta( '_mlb_location_id' ) === $only );
+		}
 
 		if ( 'active' === $scope ) {
 			$orders = array_filter( $orders, static fn ( \WC_Order $order ): bool => ! Statuses::is_final( Statuses::for_order( $order ) ) );
@@ -153,6 +160,10 @@ class Admin_Orders_Controller {
 		if ( ! $order instanceof \WC_Order || ( 'app' !== $order->get_meta( '_mlb_source' ) && ! Site_Orders::is_site_order( $order ) ) ) {
 			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
 		}
+		$only = Kitchen_Role::location_of();
+		if ( '' !== $only && (string) $order->get_meta( '_mlb_location_id' ) !== $only ) {
+			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
+		}
 		return $order;
 	}
 
@@ -185,7 +196,8 @@ class Admin_Orders_Controller {
 					'sent'     => '' !== self::grandchef_order_id( $order ),
 					'order_id' => self::grandchef_order_id( $order ),
 				),
-				'edit_url'      => $order->get_edit_order_url(),
+				// Kitchen accounts can't open WooCommerce orders.
+				'edit_url'      => current_user_can( 'edit_shop_orders' ) ? $order->get_edit_order_url() : null,
 			)
 		);
 	}
