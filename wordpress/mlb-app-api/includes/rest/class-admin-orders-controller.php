@@ -162,6 +162,11 @@ class Admin_Orders_Controller {
 	 * @return array<string, mixed>
 	 */
 	public static function format( \WC_Order $order ): array {
+		// Website orders get their map point here, the first time staff see them.
+		if ( 'delivery' === $order->get_meta( '_mlb_fulfillment' ) && ! $order->meta_exists( Delivery_Quote::MATCH_META ) && ! Statuses::is_final( Statuses::for_order( $order ) ) ) {
+			Delivery_Quote::locate_order( $order );
+			$order->save();
+		}
 		$data     = Formatter::order( $order );
 		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
 
@@ -173,6 +178,7 @@ class Admin_Orders_Controller {
 				'location_name' => $location ? (string) $location['name'] : '',
 				'note'          => $order->get_customer_note(),
 				'next_statuses' => Statuses::next( $data['status'], (string) $data['fulfillment'] ),
+				'address_match' => (string) $order->get_meta( Delivery_Quote::MATCH_META ) ?: null,
 				'prep_minutes'  => $order->meta_exists( Delivery_Quote::PREP_META ) ? (int) $order->get_meta( Delivery_Quote::PREP_META ) : null,
 				'drive_minutes' => $order->meta_exists( Delivery_Quote::DRIVE_META ) ? (int) $order->get_meta( Delivery_Quote::DRIVE_META ) : null,
 				'grandchef'     => array(

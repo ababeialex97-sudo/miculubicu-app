@@ -32,3 +32,4 @@
 .mlb-chips .button { min-height: 40px; min-width: 64px; }
 .mlb-badge-site { background: #e7f0f9; color: #135e96; }
 .mlb-shipping { display: flex; justify-content: space-between; margin: 0; font-size: 13px; color: #50575e; }
+.mlb-address-warning { margin: 0; padding: 6px 8px; border-radius: 3px; background: #fcf0f1; color: #8a2424; font-size: 13px; }

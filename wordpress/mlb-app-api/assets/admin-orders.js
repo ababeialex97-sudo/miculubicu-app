@@ -322,6 +322,7 @@
 					] );
 				} )
 			),
+			addressWarning( order ),
 			order.note ? el( 'p', { class: 'mlb-note', text: order.note } ) : null,
 			extrasLine( order.extras ) ? el( 'p', { class: 'mlb-muted', text: extrasLine( order.extras ) } ) : null,
 			parseFloat( order.discount_total ) > 0
@@ -350,6 +351,18 @@
 			delayButtons( order, busy ),
 			actions.length ? el( 'div', { class: 'mlb-actions' }, actions ) : null,
 		] );
+	}
+
+	// The map couldn't place the address exactly: the courier should check with the customer.
+	function addressWarning( order ) {
+		if ( order.fulfillment !== 'delivery' ) {
+			return null;
+		}
+		var text = {
+			street: 'Pe hartă s-a găsit doar strada, nu și numărul. Verifică adresa cu clientul.',
+			none: 'Adresa nu a fost găsită pe hartă: s-a aplicat costul fix. Sună clientul pentru adresă.',
+		}[ order.address_match ];
+		return text ? el( 'p', { class: 'mlb-address-warning', text: text } ) : null;
 	}
 
 	// "2 pachete, 1 platou · gratis: 12 felii pâine, 240 ml muștar"; older orders have no extras.

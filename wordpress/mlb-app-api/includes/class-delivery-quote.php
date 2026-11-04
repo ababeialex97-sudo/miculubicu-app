@@ -21,6 +21,8 @@ class Delivery_Quote {
 	public const READY_META    = '_mlb_ready_at';
 	public const PREP_META     = '_mlb_prep_minutes';
 	public const DRIVE_META    = '_mlb_drive_minutes';
+	/** How well the map matched the address: exact, street (number not found) or none. */
+	public const MATCH_META    = '_mlb_delivery_match';
 
 	private const CACHE_PREFIX = 'mlb_dq_';
 	private const CACHE_TTL    = MONTH_IN_SECONDS;
@@ -152,8 +154,8 @@ class Delivery_Quote {
 	 * Website orders have no map point: finds it from the shipping address (cached like the
 	 * app's quotes), so the drive can be timed.
 	 */
-	private static function locate_order( \WC_Order $order ): void {
-		if ( is_array( $order->get_meta( self::DEST_META ) ) ) {
+	public static function locate_order( \WC_Order $order ): void {
+		if ( is_array( $order->get_meta( self::DEST_META ) ) || $order->meta_exists( self::MATCH_META ) ) {
 			return;
 		}
 		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
@@ -168,6 +170,10 @@ class Delivery_Quote {
 				'city'      => $order->get_shipping_city() ?: $order->get_billing_city(),
 			)
 		);
+		if ( 'distance' !== $quote['mode'] ) {
+			return;
+		}
+		self::record_match( $order, $quote );
 		if ( ! empty( $quote['point'] ) ) {
 			$order->update_meta_data( self::DEST_META, $quote['point'] );
 		}
@@ -268,9 +274,31 @@ class Delivery_Quote {
 	 * @param array<string, mixed> $address
 	 */
 	private static function address_text( array $address ): string {
-		$street = trim( (string) ( $address['address_1'] ?? '' ) );
+		$street = self::street_only( (string) ( $address['address_1'] ?? '' ) );
 		$city   = trim( (string) ( $address['city'] ?? '' ) );
 		return '' === $street ? '' : implode( ', ', array_filter( array( $street, $city, 'România' ) ) );
+	}
+
+	/**
+	 * People write "Str. Libertății nr. 5, bl. A2, sc. B, ap. 12" in one line; the block,
+	 * staircase, floor and flat only confuse the map, so they go before geocoding.
+	 */
+	public static function street_only( string $street ): string {
+		// A keyword, then a code with a digit or of one or two letters ("bl. A2", "sc. B"), so
+		// street names such as "Bloc Nou" or "Apărătorii Patriei" stay whole.
+		$street = preg_replace( '/[,\s]*(?<![\p{L}])(bl(oc|ocul)?|sc(ara)?|et(aj)?|ap(artament)?|cam(era)?|interfon)(?![\p{L}])\.?\s*(?:[\p{L}\/-]*\d[\p{L}\d\/-]*|[\p{L}]{1,2}(?![\p{L}]))/iu', '', $street );
+		$street = preg_replace( '/\bnr\.?\s*(?=\d)/iu', '', (string) $street );
+		return trim( (string) preg_replace( '/\s*,\s*$|\s{2,}/u', ' ', (string) $street ), " ,\t" );
+	}
+
+	/**
+	 * Saves how well the map matched the order's address, from a quote.
+	 *
+	 * @param array<string, mixed> $quote
+	 */
+	public static function record_match( \WC_Order $order, array $quote ): void {
+		$match = empty( $quote['point'] ) ? 'none' : ( $quote['verified'] ? 'exact' : 'street' );
+		$order->update_meta_data( self::MATCH_META, $match );
 	}
 
 	private static function normalize( string $text ): string {
