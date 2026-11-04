@@ -91,10 +91,16 @@ class Packaging {
 	public static function product_rules( \WC_Product $product ): array {
 		$id = $product->get_parent_id() ?: $product->get_id();
 		$rules = self::saved_rules( $id );
-		if ( null === $rules ) {
-			$parent = $product->get_parent_id() ? wc_get_product( $id ) : $product;
-			return Packaging_Rules::guess( $parent ? $parent->get_name() : $product->get_name() );
+		if ( null !== $rules && '-' !== $rules['box'] ) {
+			return $rules;
 		}
+		$parent = $product->get_parent_id() ? wc_get_product( $id ) : $product;
+		$guess  = Packaging_Rules::guess( $parent ? $parent->get_name() : $product->get_name() );
+		if ( null === $rules ) {
+			return $guess;
+		}
+		// Pieces filled in but no box: the name says which box, so ceafă never joins the mici.
+		$rules['box'] = Packaging_Rules::box_key( $guess['box'] );
 		return $rules;
 	}
 
