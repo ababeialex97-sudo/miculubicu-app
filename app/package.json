@@ -53,5 +53,9 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "glob": "^14.0.3",
+    "minimatch@>=7 <11.0.1": "^11.0.4"
+  }
 }
