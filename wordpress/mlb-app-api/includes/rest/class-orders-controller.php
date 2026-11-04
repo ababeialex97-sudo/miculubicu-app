@@ -11,6 +11,8 @@ namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Auth;
 use MLB\AppApi\Coupons;
+use MLB\AppApi\Delivery_Quote;
+use MLB\AppApi\Distance_Pricing;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\GrandChef_Diagnostics;
 use MLB\AppApi\Guest_Orders;
@@ -319,6 +321,12 @@ class Orders_Controller {
 			return self::error( 'mlb_address_required', 'Adresa de livrare este obligatorie.' );
 		}
 
+		// The fee always comes from the server's own distance check, never from the app.
+		$quote = 'delivery' === $fulfillment ? Delivery_Quote::quote( $location, $address ) : null;
+		if ( $quote && ! $quote['available'] ) {
+			return self::error( 'mlb_address_too_far', $quote['message'] );
+		}
+
 		$gateways = WC()->payment_gateways()->payment_gateways();
 		$gateway  = $gateways[ (string) $request['payment_method'] ] ?? null;
 		if ( ! $gateway || 'yes' !== $gateway->enabled ) {
@@ -380,6 +388,13 @@ class Orders_Controller {
 			$order->set_billing_address_2( $order->get_shipping_address_2() );
 			$order->set_billing_city( $order->get_shipping_city() );
 			$order->set_billing_country( 'RO' );
+
+			if ( $quote['point'] ) {
+				$order->update_meta_data( Delivery_Quote::DEST_META, $quote['point'] );
+			}
+			if ( null !== $quote['distance_km'] ) {
+				$order->update_meta_data( Delivery_Quote::DISTANCE_META, $quote['distance_km'] );
+			}
 		}
 
 		$order->set_payment_method( $gateway );
@@ -409,9 +424,14 @@ class Orders_Controller {
 			}
 		}
 
-		$order->add_item( $this->shipping_item( $method, self::delivery_cost_for( $fulfillment, $location, (float) $order->get_subtotal() ) ) );
+		$base_fee = $quote ? $quote['fee'] : null;
+		$order->add_item( $this->shipping_item( $method, $quote ? self::delivery_cost( $location, (float) $order->get_subtotal(), $base_fee ) : 0.0 ) );
 		$order->calculate_totals();
 		$order->save();
+
+		if ( $quote && 'distance' === $quote['mode'] ) {
+			$order->add_order_note( self::distance_note( $quote ) );
+		}
 
 		do_action( 'mlb_app_api_order_created', $order, $request );
 
@@ -475,19 +495,29 @@ class Orders_Controller {
 
 	/**
 	 * Delivery fee for a subtotal (before discounts): zero above the location's free delivery threshold.
+	 * $fee is the distance price for the address; without it the location's flat fee applies.
 	 *
 	 * @param array<string, mixed> $location
 	 */
-	public static function delivery_cost( array $location, float $subtotal ): float {
+	public static function delivery_cost( array $location, float $subtotal, ?float $fee = null ): float {
 		$threshold = Settings::get_free_delivery_threshold( $location );
-		return ( $threshold > 0 && $subtotal >= $threshold ) ? 0.0 : Settings::get_delivery_fee( $location );
+		return ( $threshold > 0 && $subtotal >= $threshold ) ? 0.0 : ( $fee ?? Settings::get_delivery_fee( $location ) );
 	}
 
 	/**
-	 * @param array<string, mixed> $location
+	 * Tells staff how the delivery fee was worked out.
+	 *
+	 * @param array<string, mixed> $quote
 	 */
-	private static function delivery_cost_for( string $fulfillment, array $location, float $subtotal ): float {
-		return 'delivery' === $fulfillment ? self::delivery_cost( $location, $subtotal ) : 0.0;
+	private static function distance_note( array $quote ): string {
+		if ( null === $quote['distance_km'] ) {
+			return 'Adresa nu a fost găsită pe hartă, s-a aplicat costul fix de livrare.';
+		}
+		$note = sprintf( 'Distanța pe drum: %s', Distance_Pricing::km_label( (float) $quote['distance_km'] ) );
+		if ( '' !== $quote['formatted_address'] ) {
+			$note .= sprintf( ' (pe hartă: %s)', $quote['formatted_address'] );
+		}
+		return $note . ( $quote['verified'] ? '.' : '. Numărul străzii nu a fost găsit, verifică adresa.' );
 	}
 
 	/**
@@ -662,24 +692,7 @@ class Orders_Controller {
 				'type'     => 'string',
 				'required' => true,
 			),
-			'address'         => array(
-				'type'       => 'object',
-				'default'    => array(),
-				'properties' => array(
-					'address_1' => array(
-						'type'      => 'string',
-						'maxLength' => 200,
-					),
-					'address_2' => array(
-						'type'      => 'string',
-						'maxLength' => 200,
-					),
-					'city'      => array(
-						'type'      => 'string',
-						'maxLength' => 100,
-					),
-				),
-			),
+			'address'         => Delivery_Controller::address_schema(),
 			'phone'           => array(
 				'type'      => 'string',
 				'required'  => true,

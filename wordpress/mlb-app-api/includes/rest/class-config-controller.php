@@ -6,6 +6,7 @@
 namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Formatter;
+use MLB\AppApi\Maps;
 use MLB\AppApi\Settings;
 use MLB\AppApi\Statuses;
 
@@ -29,6 +30,16 @@ class Config_Controller {
 		$delivery_available = null !== Settings::get_delivery_method();
 		$pickup_available   = null !== Settings::get_pickup_method();
 
+		$bands       = Settings::get_distance_bands();
+		$maps_ready  = Maps::is_configured();
+		$price_bands = array_map(
+			static fn ( array $band ): array => array(
+				'up_to_km' => $band['up_to_km'],
+				'fee'      => Formatter::money( $band['fee'] ),
+			),
+			$bands
+		);
+
 		$locations = array();
 		foreach ( Settings::get_locations() as $location ) {
 			$locations[] = array(
@@ -40,6 +51,9 @@ class Config_Controller {
 				'pickup'                  => $pickup_available && ! empty( $location['pickup'] ),
 				'delivery_fee'            => Formatter::money( Settings::get_delivery_fee( $location ) ),
 				'free_delivery_threshold' => Formatter::money( Settings::get_free_delivery_threshold( $location ) ),
+				// When true the fee depends on the address: ask /delivery/quote.
+				'distance_pricing'        => $bands && $maps_ready && null !== Settings::location_point( $location ),
+				'delivery_bands'          => $price_bands,
 			);
 		}
 

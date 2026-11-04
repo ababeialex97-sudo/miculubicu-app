@@ -58,6 +58,9 @@ export type Location = {
   pickup: boolean;
   delivery_fee: string;
   free_delivery_threshold: string;
+  // When true the delivery fee depends on the address (see DeliveryQuote). Missing on older sites.
+  distance_pricing?: boolean;
+  delivery_bands?: { up_to_km: number; fee: string }[];
 };
 
 export type OrderStatus =
@@ -134,6 +137,10 @@ export type Order = {
   address: Address;
   phone: string;
   note: string;
+  // Missing on sites still running an older mlb-app-api.
+  distance_km?: number | null;
+  // When the courier should arrive, set as the order leaves the restaurant.
+  eta_at?: string | null;
 };
 
 export type NewOrder = {
@@ -182,6 +189,24 @@ export type Loyalty = {
   required: number;
   reward_label: string;
   coupons: Coupon[];
+};
+
+export type DeliveryQuoteRequest = {
+  location_id: string;
+  address: Pick<Address, 'address_1' | 'city'>;
+};
+
+export type DeliveryQuote = {
+  mode: 'flat' | 'distance';
+  // False when the address is farther than the restaurant delivers.
+  available: boolean;
+  // Null until there is an address to measure.
+  fee: string | null;
+  distance_km: number | null;
+  // False when the map only found the street or nothing at all: the fee may be the flat one.
+  verified: boolean;
+  formatted_address: string;
+  message: string;
 };
 
 export type CartPreviewRequest = {

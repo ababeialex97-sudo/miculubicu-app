@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ORDER_TOKEN_HEADER, api } from '@/api/client';
-import type { CartPreview, CartPreviewRequest, Config, Customer, GuestOrder, Loyalty, Menu, NewGuestOrder, NewOrder, Order, Session } from '@/api/types';
+import type { CartPreview, CartPreviewRequest, Config, Customer, DeliveryQuote, DeliveryQuoteRequest, GuestOrder, Loyalty, Menu, NewGuestOrder, NewOrder, Order, Session } from '@/api/types';
 import { guestTokenFor } from '@/lib/guest';
 import { useGuestOrders } from '@/store/guest-orders';
 import { useSession } from '@/store/session';
@@ -14,6 +14,7 @@ export const queryKeys = {
   guestOrders: (ids: number[]) => ['orders', 'guest', ids] as const,
   loyalty: ['loyalty'] as const,
   cartPreview: (request: CartPreviewRequest) => ['cart-preview', request] as const,
+  deliveryQuote: (request: DeliveryQuoteRequest) => ['delivery-quote', request] as const,
 };
 
 // Order statuses only change when staff update them, so a slow poll is enough
@@ -177,5 +178,20 @@ export function useCartPreview(request: CartPreviewRequest) {
     enabled: request.coupon_codes.length > 0 && request.items.length > 0,
     placeholderData: keepPreviousData,
     retry: false,
+  });
+}
+
+/**
+ * Delivery fee for the typed address, when the location prices delivery by distance.
+ * The caller passes null until the address is worth measuring (e.g. while still typing).
+ */
+export function useDeliveryQuote(request: DeliveryQuoteRequest | null) {
+  return useQuery({
+    queryKey: queryKeys.deliveryQuote(request ?? { location_id: '', address: { address_1: '', city: '' } }),
+    queryFn: () => api<DeliveryQuote>('/delivery/quote', { method: 'POST', body: request }),
+    enabled: request !== null,
+    staleTime: 10 * 60_000,
+    placeholderData: keepPreviousData,
+    retry: 1,
   });
 }

@@ -4,12 +4,14 @@ import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder } from '@/api/hooks';
-import type { CartPreviewRequest, NewOrder } from '@/api/types';
+import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder, useDeliveryQuote } from '@/api/hooks';
+import type { CartPreviewRequest, DeliveryQuote, DeliveryQuoteRequest, NewOrder } from '@/api/types';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
-import { addCouponCode, deliveryFeeBani, orderItems, subtotalBani } from '@/lib/cart';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { addCouponCode, orderItems, subtotalBani } from '@/lib/cart';
+import { formatKm, lowestBandFee, shippingBani } from '@/lib/delivery';
 import { guestContactErrors, type GuestContact } from '@/lib/guest';
 import { randomId } from '@/lib/id';
 import { registerForPush } from '@/lib/push';
@@ -59,6 +61,18 @@ export default function CartScreen() {
   // A code that stopped applying (e.g. the cart dropped under its minimum) blocks the order until removed.
   const couponProblem = cart.couponCodes.length > 0 && preview.isError ? preview.error.message : null;
 
+  // Priced by distance: measure the address once the customer stops typing.
+  const distancePricing = isDelivery && location?.distance_pricing === true;
+  const street = useDebouncedValue(cart.address.address_1.trim(), 900);
+  const city = useDebouncedValue(cart.address.city.trim(), 900);
+  const quoteRequest = useMemo<DeliveryQuoteRequest | null>(
+    () => (distancePricing && location && street.length >= 3 ? { location_id: location.id, address: { address_1: street, city } } : null),
+    [distancePricing, location, street, city],
+  );
+  const quote = useDeliveryQuote(quoteRequest);
+  const quoteData = quoteRequest ? quote.data : undefined;
+  const tooFar = quoteData !== undefined && !quoteData.available;
+
   if (cart.lines.length === 0) {
     return (
       <Centered>
@@ -71,10 +85,11 @@ export default function CartScreen() {
 
   const subtotal = subtotalBani(cart.lines);
   const threshold = toBani(location?.free_delivery_threshold ?? 0);
-  const shipping = isDelivery ? deliveryFeeBani(subtotal, toBani(location?.delivery_fee ?? 0), threshold) : 0;
+  const shipping = isDelivery ? shippingBani(location, quoteData, subtotal) : 0;
+  const fromFee = lowestBandFee(location);
   const hasDiscount = cart.couponCodes.length > 0 && preview.data !== undefined && !preview.isError;
   const discount = hasDiscount ? toBani(preview.data!.discount) : 0;
-  const total = Math.max(0, subtotal - discount) + shipping;
+  const total = Math.max(0, subtotal - discount) + (shipping ?? 0);
 
   const applyCode = async () => {
     const codes = addCouponCode(cart.couponCodes, codeInput);
@@ -105,6 +120,8 @@ export default function CartScreen() {
     if (!location) found.location = 'Alege punctul de lucru.';
     if (isDelivery && !cart.address.address_1.trim()) found.address_1 = 'Scrie adresa de livrare.';
     if (isDelivery && !cart.address.city.trim()) found.city = 'Scrie localitatea.';
+    // The hint under the address already says why; this only blocks the order.
+    if (isDelivery && tooFar) found.delivery = quoteData?.message || 'Nu livrăm la această adresă.';
     if (phone.replace(/\D/g, '').length < 10) found.phone = 'Scrie un număr de telefon valid.';
     if (!paymentMethod) found.payment = 'Plata nu este disponibilă momentan.';
     if (couponProblem) found.coupon = couponProblem;
@@ -265,6 +282,15 @@ export default function CartScreen() {
             <Field label="Adresa de livrare" placeholder="Strada, numărul" value={cart.address.address_1} onChangeText={(address_1) => cart.setAddress({ address_1 })} autoComplete="street-address" error={errors.address_1} />
             <Field label="Bloc, scară, apartament (opțional)" value={cart.address.address_2} onChangeText={(address_2) => cart.setAddress({ address_2 })} />
             <Field label="Localitatea" value={cart.address.city} onChangeText={(city) => cart.setAddress({ city })} error={errors.city} />
+            {distancePricing ? (
+              <DeliveryHint
+                loading={quoteRequest !== null && quote.isFetching}
+                failed={quoteRequest !== null && quote.isError}
+                quote={quoteData}
+                shipping={shipping}
+                fromFee={fromFee}
+              />
+            ) : null}
           </View>
         ) : null}
 
@@ -334,7 +360,7 @@ export default function CartScreen() {
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <Row label="Produse" value={formatBani(subtotal)} />
-        {isDelivery ? <Row label="Livrare" value={shipping === 0 ? 'Gratuit' : formatBani(shipping)} /> : null}
+        {isDelivery ? <Row label="Livrare" value={shipping === null ? 'după adresă' : shipping === 0 ? 'Gratuit' : formatBani(shipping)} /> : null}
         {discount > 0 ? <Row label="Reducere" value={`−${formatBani(discount)}`} highlight /> : null}
         <View style={styles.totalRow}>
           <AppText style={styles.total}>Total</AppText>
@@ -345,6 +371,47 @@ export default function CartScreen() {
         <Button label={customer || asGuest ? 'Trimite comanda' : 'Intră în cont ca să comanzi'} loading={placing.isPending} onPress={submit} />
       </SafeAreaView>
     </SafeAreaView>
+  );
+}
+
+/** Distance and fee for the typed address, or why there is none. */
+function DeliveryHint({
+  loading,
+  failed,
+  quote,
+  shipping,
+  fromFee,
+}: {
+  loading: boolean;
+  failed: boolean;
+  quote: DeliveryQuote | undefined;
+  shipping: number | null;
+  fromFee: number | null;
+}) {
+  let main: string;
+  let detail = '';
+  if (failed && !quote) {
+    main = 'Nu am putut calcula costul livrării acum. Îl calculăm când trimiți comanda.';
+  } else if (!quote) {
+    main = loading ? 'Calculăm costul livrării…' : fromFee !== null ? `Livrarea costă de la ${formatBani(fromFee)}, după distanță.` : 'Costul livrării depinde de distanță.';
+  } else if (!quote.available) {
+    return <AppText style={styles.error}>{quote.message || 'Nu livrăm la această adresă.'}</AppText>;
+  } else {
+    const fee = shipping === null ? '' : shipping === 0 ? 'livrare gratuită' : `livrare ${formatBani(shipping)}`;
+    main = [quote.distance_km !== null ? `${formatKm(quote.distance_km)} până la tine` : '', fee].filter(Boolean).join(' · ');
+    detail = [quote.formatted_address ? `Pe hartă: ${quote.formatted_address}` : '', quote.message].filter(Boolean).join('\n');
+  }
+
+  return (
+    <View style={styles.deliveryHint}>
+      {loading ? <ActivityIndicator size="small" color={colors.accent} /> : <Icon name="pin" size={18} color={colors.accent} />}
+      <View style={{ flex: 1, gap: 2 }}>
+        <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
+          {main}
+        </AppText>
+        {detail ? <AppText variant="muted">{detail}</AppText> : null}
+      </View>
+    </View>
   );
 }
 
@@ -378,6 +445,7 @@ const styles = StyleSheet.create({
   guestLogin: { minHeight: minTouchSize, justifyContent: 'center' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
   change: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
+  deliveryHint: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: colors.surface },
   payment: { minHeight: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   codeRow: { flexDirection: 'row', gap: 8 },
   codeInput: { flex: 1, height: 46, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.text, fontFamily: fonts.regular, fontSize: 14 },

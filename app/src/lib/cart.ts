@@ -43,11 +43,6 @@ export function itemCount(lines: CartLine[]): number {
   return lines.reduce((sum, l) => sum + l.quantity, 0);
 }
 
-/** Delivery fee shown before ordering; the server recomputes it when the order is placed. */
-export function deliveryFeeBani(subtotal: number, feeBani: number, freeThresholdBani: number): number {
-  return freeThresholdBani > 0 && subtotal >= freeThresholdBani ? 0 : feeBani;
-}
-
 /** Joins the chosen preference chips and the free-text kitchen note into one line for the order. */
 export function joinPreferences(chips: string[], note: string): string {
   return [...chips, note.trim()].filter(Boolean).join(', ');

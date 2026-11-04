@@ -110,6 +110,9 @@ class Formatter {
 			),
 			'phone'           => $order->get_billing_phone(),
 			'note'            => $order->meta_exists( '_mlb_note' ) ? (string) $order->get_meta( '_mlb_note' ) : $order->get_customer_note(),
+			'distance_km'     => $order->meta_exists( Delivery_Quote::DISTANCE_META ) ? (float) $order->get_meta( Delivery_Quote::DISTANCE_META ) : null,
+			// Courier's expected arrival with traffic, set when the order leaves the restaurant.
+			'eta_at'          => (string) $order->get_meta( Delivery_Quote::ETA_META ) ?: null,
 		);
 	}
 }

@@ -21,6 +21,8 @@ class Settings {
 	public const OPTION_GUEST_CHECKOUT     = 'mlb_app_api_guest_checkout';
 	public const OPTION_GOOGLE_CLIENT_IDS  = 'mlb_app_api_google_client_ids';
 	public const OPTION_APPLE_CLIENT_IDS   = 'mlb_app_api_apple_client_ids';
+	public const OPTION_DISTANCE_BANDS     = 'mlb_app_api_distance_bands';
+	public const OPTION_MAPS_KEY           = 'mlb_app_api_maps_key';
 
 	/** The app's iOS bundle ID: the audience of Sign in with Apple tokens from the app. */
 	public const DEFAULT_APPLE_CLIENT_ID = 'ro.miculubicu.app';
@@ -31,7 +33,8 @@ class Settings {
 	 * Pickup/delivery points. Placeholder names until the client confirms them.
 	 *
 	 * Each location: id, name, address, phone, delivery (bool), pickup (bool),
-	 * and optional delivery_fee / free_delivery_threshold overriding the global values.
+	 * optional delivery_fee / free_delivery_threshold overriding the global values, and
+	 * coordinates ("lat, lng") used for distance pricing.
 	 *
 	 * @return array<int, array<string, mixed>>
 	 */
@@ -165,6 +168,25 @@ class Settings {
 		$cost = (string) $method->get_option( 'cost', '0' );
 		$cost = str_replace( ',', '.', $cost );
 		return is_numeric( $cost ) ? max( 0.0, (float) $cost ) : 0.0;
+	}
+
+	/**
+	 * Delivery price bands by road distance; empty means one flat fee for every address.
+	 *
+	 * @return array<int, array{up_to_km: float, fee: float}>
+	 */
+	public static function get_distance_bands(): array {
+		return Distance_Pricing::parse_bands( get_option( self::OPTION_DISTANCE_BANDS, '' ) );
+	}
+
+	/**
+	 * Where the courier leaves from, as set in the location's "Coordonate" field.
+	 *
+	 * @param array<string, mixed> $location
+	 * @return array{lat: float, lng: float}|null
+	 */
+	public static function location_point( array $location ): ?array {
+		return Distance_Pricing::parse_coordinates( (string) ( $location['coordinates'] ?? '' ) );
 	}
 
 	public static function get_jwt_secret(): string {
