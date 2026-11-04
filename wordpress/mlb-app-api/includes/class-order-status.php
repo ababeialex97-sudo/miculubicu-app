@@ -19,9 +19,10 @@ class Order_Status {
 	}
 
 	/**
+	 * @param int|null $prep_minutes Preparation time the kitchen picked when accepting.
 	 * @return true|\WP_Error
 	 */
-	public static function change( \WC_Order $order, string $status ) {
+	public static function change( \WC_Order $order, string $status, ?int $prep_minutes = null ) {
 		if ( ! Statuses::is_valid( $status ) ) {
 			return new \WP_Error( 'mlb_invalid_status', 'Status necunoscut.', array( 'status' => 400 ) );
 		}
@@ -36,6 +37,9 @@ class Order_Status {
 
 		Statuses::record( $order, $status );
 		$order->add_order_note( 'Status în aplicație: ' . Statuses::labels()[ $status ] );
+		if ( Statuses::CONFIRMED === $status && $prep_minutes ) {
+			Delivery_Quote::record_estimate( $order, $prep_minutes );
+		}
 		if ( Statuses::ON_THE_WAY === $status ) {
 			Delivery_Quote::record_eta( $order );
 		}
@@ -60,8 +64,23 @@ class Order_Status {
 		return true;
 	}
 
+	/**
+	 * The kitchen needs longer than it said: moves the times and tells the customer.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function delay( \WC_Order $order, int $minutes ) {
+		if ( ! in_array( Statuses::for_order( $order ), array( Statuses::CONFIRMED, Statuses::PREPARING ), true ) || ! $order->get_meta( Delivery_Quote::READY_META ) ) {
+			return new \WP_Error( 'mlb_cannot_delay', 'Timpul se poate schimba doar cât comanda e în lucru.', array( 'status' => 409 ) );
+		}
+		Delivery_Quote::delay( $order, $minutes );
+		$order->save();
+		Push::notify_delay( $order );
+		return true;
+	}
+
 	public static function sync_from_woocommerce( int $order_id, \WC_Order $order ): void {
-		if ( self::$syncing || 'app' !== $order->get_meta( '_mlb_source' ) ) {
+		if ( self::$syncing || ! in_array( $order->get_meta( '_mlb_source' ), array( 'app', Site_Orders::SOURCE ), true ) ) {
 			return;
 		}
 

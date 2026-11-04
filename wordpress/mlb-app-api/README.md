@@ -37,10 +37,13 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | POST | `/orders/guest/{id}/push-token` | header `X-MLB-Order-Token` | Notificări push pentru o comandă fără cont |
 | POST | `/orders/claim` | token | Mută în cont comenzile fără cont de pe telefon (istoric + ștampile pentru cele deja finalizate) |
 | GET | `/loyalty` | token | Cardul de fidelitate (ștampile) și cupoanele pe care clientul le poate folosi |
+| GET | `/delivery/places?q=…&session=…` | – | Sugestii de adrese Google pentru ce scrie clientul, cele apropiate de punctul de lucru întâi (`location_id` opțional) |
+| GET | `/delivery/places/{place_id}?session=…` | – | Sugestia aleasă ca adresă: `address_1`, `city`, `lat`, `lng`, `precise` (fals când lipsește numărul) |
 | POST | `/delivery/quote` | – | Costul livrării pentru o adresă (`location_id`, `address` cu `address_1`, `city` sau `lat`/`lng`): distanța pe drum, prețul tranșei, dacă se livrează acolo |
 | POST | `/cart/preview` | token opțional | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
-| POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
+| POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push; la acceptare, `prep_minutes` e timpul de preparare |
+| POST | `/admin/orders/{id}/delay` | personal (cookie WordPress) | `minutes`: comanda mai durează; mută orele și anunță clientul |
 | POST / DELETE | `/push-tokens` | token | Înregistrează / șterge tokenul Expo Push al dispozitivului |
 
 Autentificarea folosește `Authorization: Bearer <token>` (JWT HS256, valabil 30 de zile). Schimbarea parolei invalidează toate tokenurile clientului.
@@ -101,6 +104,8 @@ Aplicația primește de la Google sau Apple un ID token semnat (JWT RS256). Plug
 
 ## Panoul pentru personal
 
+Panoul arată și comenzile de pe site (cu eticheta „Site”), ca bucătăria să le vadă pe toate într-un loc. Site-ul nu are alegere de punct de lucru, așa că o comandă de pe site primește primul punct de lucru care face livrare sau ridicare, după metoda aleasă la finalizare. Clientul de pe site primește emailurile WooCommerce; notificare push primește doar dacă are cont și aplicația.
+
 În WordPress, sub **WooCommerce** apar două pagini noi:
 
 - **Comenzi aplicație**: comenzile deschise din aplicație, cu clientul, telefonul, adresa, produsele cu preferințele lor, observațiile, totalul și dacă au ajuns la GrandChef (`_gc_order_id`). Butoanele mută comanda la pasul următor: Acceptă → Pune pe jar → Plecată la client / Gata de ridicare → Finalizată, plus Anulează. Pagina se reîncarcă singură la 20 de secunde și sună scurt la o comandă nouă. Filtrul de sus arată doar un punct de lucru sau toate comenzile de azi. Acces: utilizatorii care pot edita comenzi (`edit_shop_orders`), de exemplu Shop Manager.
@@ -111,6 +116,16 @@ Fiecare schimbare de status:
 - adaugă o notă în comanda WooCommerce;
 - „Finalizată” și „Anulată” mută și comanda WooCommerce în `completed` / `cancelled`; invers, o comandă finalizată sau anulată direct din WooCommerce se actualizează și în aplicație. Comanda nu mai trece niciodată prin `processing`, deci GrandChef nu o primește a doua oară;
 - trimite clientului o notificare push.
+
+### Conturi pentru bucătărie
+
+Rolul **Bucătărie** vede doar „Comenzi aplicație”: acceptă comenzile, alege timpul de preparare, schimbă statusul și amână. Nu are acces la WooCommerce, produse, pagini, module sau setări.
+
+1. **Utilizatori › Adaugă utilizator**, cu rolul **Bucătărie**.
+2. Deschide utilizatorul și, la secțiunea **Bucătărie**, alege punctul de lucru. Contul vede atunci doar comenzile acelui punct; fără alegere le vede pe toate.
+3. La autentificare, contul ajunge direct în panou.
+
+Administratorii și managerii de magazin văd panoul ca înainte, în meniul WooCommerce.
 
 ## Fidelizare și promoții
 
@@ -130,7 +145,7 @@ Costul livrării poate depinde de distanța reală pe drum de la punctul de lucr
 
 1. **Preț după distanță**: câte un rând „până la km = lei”, de exemplu `2 = 10`, `4 = 15`, `6 = 20`. Ultimul rând e distanța maximă; mai departe aplicația spune că nu se livrează la adresa respectivă.
 2. **Coordonatele** punctului de lucru (de unde pleacă livratorul), copiate din Google Maps.
-3. **Cheia Google Maps**, dintr-un proiect Google Cloud cu **Geocoding API** și **Routes API** activate. Cheia se poate pune și în `wp-config.php`: `define( 'MLB_APP_API_MAPS_KEY', '...' );`. Nu ajunge niciodată în aplicație.
+3. **Cheia Google Maps**, dintr-un proiect Google Cloud cu **Geocoding API**, **Routes API** și **Places API (New)** activate. Cheia se poate pune și în `wp-config.php`: `define( 'MLB_APP_API_MAPS_KEY', '...' );`. Nu ajunge niciodată în aplicație.
 
 Cum funcționează:
 - în coș, după ce clientul scrie adresa, aplicația cere `/delivery/quote` și arată distanța, prețul și adresa găsită pe hartă;
@@ -139,6 +154,11 @@ Cum funcționează:
 - o adresă pe care harta n-o găsește (sau la care Google nu răspunde) primește costul fix al livrării, ca înainte; comanda nu e blocată din cauza hărții;
 - titlul metodei de livrare rămâne același, deci asocierea din GrandChef nu se schimbă;
 - rezultatele se păstrează 30 de zile pentru aceeași adresă, așa că o adresă se plătește la Google o singură dată.
+- **pe site** se aplică aceleași tranșe: la finalizarea comenzii, prețul metodei „Livrare la domiciliu” se schimbă după adresa scrisă de client (de la primul punct de lucru cu livrare); prea departe, rămâne doar ridicarea.
+
+**Sugestii de adrese.** Clientul nu trebuie să scrie adresa exact ca Google: în aplicație și la finalizarea comenzii pe site apare sub câmpul de stradă o listă cu adrese Google, iar alegerea uneia completează strada, numărul și localitatea. În aplicație se trimite și punctul exact, așa că distanța nu mai depinde de cum a fost scrisă adresa; pe site serverul ține minte punctul adresei alese. Dacă sugestia nu are număr, clientul e rugat să-l adauge. Scrisul fără a alege o sugestie funcționează ca înainte. Căutările se păstrează o zi, adresele alese 30 de zile, și sunt cel mult 300 de căutări pe oră de la aceeași adresă de internet.
+
+**Timpul de preparare.** În panou, comanda nouă se acceptă alegând cât durează prepararea (10, 15, 20, 30, 45 sau 60 de minute). Serverul calculează ora la care e gata și, la livrare, adaugă drumul cu traficul estimat de Google pentru ora plecării. Clientul primește în notificare și în aplicație „Ajunge în jur de 19:45” (la ridicare, „Gata de ridicare în jur de 19:30”). Dacă bucătăria are nevoie de mai mult, butoanele „+5 / +10 / +15 min” mută ora și anunță clientul. Fără Google, drumul se estimează din distanța comenzii.
 
 Când personalul pune comanda pe „În drum spre tine”, serverul cere la Google durata drumului cu traficul din acel moment. Clientul vede „Ajunge în jur de 19:42” în aplicație și „Ajunge în aproximativ 12 minute” în notificare.
 

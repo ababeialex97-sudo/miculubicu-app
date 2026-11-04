@@ -22,11 +22,16 @@ class Orders_Page {
 	}
 
 	public static function register(): void {
+		// Kitchen accounts can't see the WooCommerce menu, so the panel gets its own menu entry.
+		if ( Kitchen_Role::is_kitchen() ) {
+			add_menu_page( 'Comenzi aplicație', 'Comenzi aplicație', Kitchen_Role::CAP, self::SLUG, array( self::class, 'render' ), 'dashicons-food', 2 );
+			return;
+		}
 		add_submenu_page( 'woocommerce', 'Comenzi aplicație', 'Comenzi aplicație', 'edit_shop_orders', self::SLUG, array( self::class, 'render' ) );
 	}
 
 	public static function enqueue( string $hook ): void {
-		if ( 'woocommerce_page_' . self::SLUG !== $hook ) {
+		if ( ! in_array( $hook, array( 'woocommerce_page_' . self::SLUG, 'toplevel_page_' . self::SLUG ), true ) ) {
 			return;
 		}
 
@@ -35,7 +40,11 @@ class Orders_Page {
 		wp_enqueue_script( 'mlb-admin-orders', $url . 'admin-orders.js', array(), MLB_APP_API_VERSION, true );
 
 		$locations = array();
+		$only      = Kitchen_Role::location_of();
 		foreach ( Settings::get_locations() as $location ) {
+			if ( '' !== $only && (string) $location['id'] !== $only ) {
+				continue;
+			}
 			$locations[] = array(
 				'id'   => (string) $location['id'],
 				'name' => (string) $location['name'],

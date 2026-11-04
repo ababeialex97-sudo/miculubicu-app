@@ -83,13 +83,14 @@ class Maps {
 	}
 
 	/**
-	 * Driving route between two points. With $traffic the duration counts the traffic right now.
+	 * Driving route between two points. With $traffic the duration counts the traffic at
+	 * $departure (a Unix time in the future), or right now when it is null.
 	 *
 	 * @param array{lat: float, lng: float} $from
 	 * @param array{lat: float, lng: float} $to
 	 * @return array{meters: int, seconds: int}|\WP_Error
 	 */
-	public static function route( array $from, array $to, bool $traffic ) {
+	public static function route( array $from, array $to, bool $traffic, ?int $departure = null ) {
 		$body = array(
 			'origin'            => self::waypoint( $from ),
 			'destination'       => self::waypoint( $to ),
@@ -98,6 +99,10 @@ class Maps {
 			'languageCode'      => 'ro',
 			'units'             => 'METRIC',
 		);
+		// Google wants a departure time in the future; a past or current one is just "now".
+		if ( $traffic && null !== $departure && $departure > time() + MINUTE_IN_SECONDS ) {
+			$body['departureTime'] = gmdate( 'Y-m-d\\TH:i:s\\Z', $departure );
+		}
 
 		$response = wp_remote_post(
 			self::ROUTES_URL,
@@ -146,7 +151,7 @@ class Maps {
 	 * @param array<string, mixed>|\WP_Error $response
 	 * @return array<string, mixed>|\WP_Error
 	 */
-	private static function request( $response ) {
+	public static function request( $response ) {
 		if ( is_wp_error( $response ) ) {
 			return new \WP_Error( 'mlb_maps_unreachable', 'Google Maps nu răspunde: ' . $response->get_error_message() );
 		}

@@ -69,4 +69,5 @@ test('arrival time only while it is ahead', () => {
   assert.match(etaLabel('2026-10-30T17:42:00Z', now) ?? '', /^Ajunge în jur de \d\d:42$/);
   assert.equal(etaLabel('2026-10-30T17:20:00Z', now), null);
   assert.equal(etaLabel(null, now), null);
+  assert.match(etaLabel('2026-10-30T17:42:00Z', now, 'pickup') ?? '', /^Gata de ridicare în jur de \d\d:42$/);
 });

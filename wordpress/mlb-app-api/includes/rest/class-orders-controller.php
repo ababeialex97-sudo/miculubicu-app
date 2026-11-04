@@ -390,6 +390,9 @@ class Orders_Controller {
 			$order->set_billing_city( $order->get_shipping_city() );
 			$order->set_billing_country( 'RO' );
 
+			if ( 'distance' === $quote['mode'] ) {
+				Delivery_Quote::record_match( $order, $quote );
+			}
 			if ( $quote['point'] ) {
 				$order->update_meta_data( Delivery_Quote::DEST_META, $quote['point'] );
 			}

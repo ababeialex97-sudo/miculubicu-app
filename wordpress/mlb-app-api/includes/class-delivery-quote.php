@@ -18,6 +18,11 @@ class Delivery_Quote {
 	public const DEST_META     = '_mlb_delivery_point';
 	public const DISTANCE_META = '_mlb_delivery_km';
 	public const ETA_META      = '_mlb_eta_at';
+	public const READY_META    = '_mlb_ready_at';
+	public const PREP_META     = '_mlb_prep_minutes';
+	public const DRIVE_META    = '_mlb_drive_minutes';
+	/** How well the map matched the address: exact, street (number not found) or none. */
+	public const MATCH_META    = '_mlb_delivery_match';
 
 	private const CACHE_PREFIX = 'mlb_dq_';
 	private const CACHE_TTL    = MONTH_IN_SECONDS;
@@ -27,7 +32,7 @@ class Delivery_Quote {
 
 	/**
 	 * @param array<string, mixed> $location
-	 * @param array<string, mixed> $address address_1, city, and optionally lat/lng from the phone's GPS.
+	 * @param array<string, mixed> $address address_1, city, and optionally lat/lng from a picked address suggestion.
 	 * @return array{mode: string, available: bool, fee: float|null, distance_km: float|null, verified: bool, formatted_address: string, message: string, point: array{lat: float, lng: float}|null}
 	 */
 	public static function quote( array $location, array $address ): array {
@@ -39,7 +44,8 @@ class Delivery_Quote {
 			return self::result( 'flat', true, $flat );
 		}
 
-		$point = self::point_from( $address );
+		$point = self::point_from( $address )
+			?? Places::remembered_point( self::street_only( (string) ( $address['address_1'] ?? '' ) ), (string) ( $address['city'] ?? '' ) );
 		$text  = self::address_text( $address );
 		if ( ! $point && '' === $text ) {
 			return self::result( 'distance', true, null, null, false, '', 'Scrie adresa ca să calculăm costul livrării.' );
@@ -76,10 +82,10 @@ class Delivery_Quote {
 	}
 
 	/**
-	 * Minutes from the location to the order's address with traffic right now, or null when
-	 * the order has no point on the map or Google can't be reached.
+	 * Minutes from the location to the order's address with traffic at $departure (now when
+	 * null), or null when the order has no point on the map or Google can't be reached.
 	 */
-	public static function eta_minutes( \WC_Order $order ): ?int {
+	public static function eta_minutes( \WC_Order $order, ?int $departure = null ): ?int {
 		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
 		$from     = $location ? Settings::location_point( $location ) : null;
 		$to       = $order->get_meta( self::DEST_META );
@@ -87,7 +93,7 @@ class Delivery_Quote {
 			return null;
 		}
 
-		$route = Maps::route( $from, array( 'lat' => (float) $to['lat'], 'lng' => (float) $to['lng'] ), true );
+		$route = Maps::route( $from, array( 'lat' => (float) $to['lat'], 'lng' => (float) $to['lng'] ), true, $departure );
 		if ( is_wp_error( $route ) ) {
 			self::log( $route );
 			return null;
@@ -106,6 +112,84 @@ class Delivery_Quote {
 		}
 		$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, time() + $minutes * MINUTE_IN_SECONDS ) );
 		$order->add_order_note( sprintf( 'Timp estimat până la client, cu traficul de acum: %d min.', $minutes ) );
+	}
+
+	/**
+	 * When the kitchen accepts the order with its preparation time: ready at now + preparation,
+	 * and for delivery at the customer after the drive, with the traffic expected when the
+	 * courier leaves. Not saved here: the status change saves the order.
+	 */
+	public static function record_estimate( \WC_Order $order, int $prep_minutes ): void {
+		$ready = time() + $prep_minutes * MINUTE_IN_SECONDS;
+		$order->update_meta_data( self::PREP_META, $prep_minutes );
+		$order->update_meta_data( self::READY_META, gmdate( DATE_ATOM, $ready ) );
+
+		if ( 'delivery' !== $order->get_meta( '_mlb_fulfillment' ) ) {
+			$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, $ready ) );
+			$order->add_order_note( sprintf( 'Timp de preparare: %d min. Gata de ridicare la %s.', $prep_minutes, wp_date( 'H:i', $ready ) ) );
+			return;
+		}
+
+		self::locate_order( $order );
+		$drive = self::eta_minutes( $order, $ready ) ?? self::drive_guess( $order );
+		$order->update_meta_data( self::DRIVE_META, $drive );
+		$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, $ready + $drive * MINUTE_IN_SECONDS ) );
+		$order->add_order_note( sprintf( 'Timp de preparare: %d min, drum: %d min. Ajunge la client în jur de %s.', $prep_minutes, $drive, wp_date( 'H:i', $ready + $drive * MINUTE_IN_SECONDS ) ) );
+	}
+
+	/**
+	 * The kitchen needs longer: ready time and arrival move by $minutes. Not saved here.
+	 */
+	public static function delay( \WC_Order $order, int $minutes ): void {
+		foreach ( array( self::READY_META, self::ETA_META ) as $key ) {
+			$at = strtotime( (string) $order->get_meta( $key ) );
+			if ( $at ) {
+				$order->update_meta_data( $key, gmdate( DATE_ATOM, max( $at, time() ) + $minutes * MINUTE_IN_SECONDS ) );
+			}
+		}
+		$order->update_meta_data( self::PREP_META, (int) $order->get_meta( self::PREP_META ) + $minutes );
+		$order->add_order_note( sprintf( 'Întârziere anunțată clientului: +%d min.', $minutes ) );
+	}
+
+	/**
+	 * Website orders have no map point: finds it from the shipping address (cached like the
+	 * app's quotes), so the drive can be timed.
+	 */
+	public static function locate_order( \WC_Order $order ): void {
+		if ( is_array( $order->get_meta( self::DEST_META ) ) || $order->meta_exists( self::MATCH_META ) ) {
+			return;
+		}
+		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
+		if ( ! $location ) {
+			return;
+		}
+		$quote = self::quote(
+			$location,
+			array(
+				'address_1' => $order->get_shipping_address_1() ?: $order->get_billing_address_1(),
+				'address_2' => $order->get_shipping_address_2() ?: $order->get_billing_address_2(),
+				'city'      => $order->get_shipping_city() ?: $order->get_billing_city(),
+			)
+		);
+		if ( 'distance' !== $quote['mode'] ) {
+			return;
+		}
+		self::record_match( $order, $quote );
+		if ( ! empty( $quote['point'] ) ) {
+			$order->update_meta_data( self::DEST_META, $quote['point'] );
+		}
+		if ( null !== $quote['distance_km'] ) {
+			$order->update_meta_data( self::DISTANCE_META, $quote['distance_km'] );
+		}
+	}
+
+	/**
+	 * Without Google: about 2.5 minutes per km in town plus parking, from the distance saved
+	 * with the order, or 20 minutes when there is none.
+	 */
+	private static function drive_guess( \WC_Order $order ): int {
+		$km = (float) $order->get_meta( self::DISTANCE_META );
+		return $km > 0 ? (int) ceil( $km * 2.5 ) + 5 : 20;
 	}
 
 	/**
@@ -191,16 +275,41 @@ class Delivery_Quote {
 	 * @param array<string, mixed> $address
 	 */
 	private static function address_text( array $address ): string {
-		$street = trim( (string) ( $address['address_1'] ?? '' ) );
+		$street = self::street_only( (string) ( $address['address_1'] ?? '' ) );
 		$city   = trim( (string) ( $address['city'] ?? '' ) );
 		return '' === $street ? '' : implode( ', ', array_filter( array( $street, $city, 'România' ) ) );
+	}
+
+	/**
+	 * People write "Str. Libertății nr. 5, bl. A2, sc. B, ap. 12" in one line; the block,
+	 * staircase, floor and flat only confuse the map, so they go before geocoding.
+	 */
+	public static function street_only( string $street ): string {
+		// A keyword, then a code with a digit or of one or two letters ("bl. A2", "sc. B"), so
+		// street names such as "Bloc Nou" or "Apărătorii Patriei" stay whole.
+		$street = preg_replace( '/[,\s]*(?<![\p{L}])(bl(oc|ocul)?|sc(ara)?|et(aj)?|ap(artament)?|cam(era)?|interfon)(?![\p{L}])\.?\s*(?:[\p{L}\/-]*\d[\p{L}\d\/-]*|[\p{L}]{1,2}(?![\p{L}]))/iu', '', $street );
+		$street = preg_replace( '/\bnr\.?\s*(?=\d)/iu', '', (string) $street );
+		return trim( (string) preg_replace( '/\s*,\s*$|\s{2,}/u', ' ', (string) $street ), " ,\t" );
+	}
+
+	/**
+	 * Saves how well the map matched the order's address, from a quote.
+	 *
+	 * @param array<string, mixed> $quote
+	 */
+	public static function record_match( \WC_Order $order, array $quote ): void {
+		$match = empty( $quote['point'] ) ? 'none' : ( $quote['verified'] ? 'exact' : 'street' );
+		$order->update_meta_data( self::MATCH_META, $match );
 	}
 
 	private static function normalize( string $text ): string {
 		return preg_replace( '/\s+/', ' ', mb_strtolower( remove_accents( $text ) ) );
 	}
 
-	private static function is_rate_limited(): bool {
+	/**
+	 * Counts one Google call for the visitor's IP; true once they reach $limit in an hour.
+	 */
+	public static function is_rate_limited( string $bucket = 'quote', int $limit = self::LOOKUP_LIMIT ): bool {
 		$ip = '';
 		foreach ( array( 'HTTP_CF_CONNECTING_IP', 'REMOTE_ADDR' ) as $header ) {
 			if ( ! empty( $_SERVER[ $header ] ) ) {
@@ -208,9 +317,9 @@ class Delivery_Quote {
 				break;
 			}
 		}
-		$key   = 'mlb_dq_rate_' . md5( $ip );
+		$key   = 'quote' === $bucket ? 'mlb_dq_rate_' . md5( $ip ) : 'mlb_dq_rate_' . $bucket . '_' . md5( $ip );
 		$count = (int) get_transient( $key );
-		if ( $count >= self::LOOKUP_LIMIT ) {
+		if ( $count >= $limit ) {
 			return true;
 		}
 		set_transient( $key, $count + 1, HOUR_IN_SECONDS );

@@ -113,8 +113,10 @@ class Formatter {
 			'phone'           => $order->get_billing_phone(),
 			'note'            => $order->meta_exists( '_mlb_note' ) ? (string) $order->get_meta( '_mlb_note' ) : $order->get_customer_note(),
 			'distance_km'     => $order->meta_exists( Delivery_Quote::DISTANCE_META ) ? (float) $order->get_meta( Delivery_Quote::DISTANCE_META ) : null,
-			// Courier's expected arrival with traffic, set when the order leaves the restaurant.
 			'extras'          => Packaging::order_extras( $order ),
+			// Set when the kitchen accepts the order with its preparation time; for delivery the
+			// arrival is recomputed with live traffic when the courier leaves.
+			'ready_at'        => (string) $order->get_meta( Delivery_Quote::READY_META ) ?: null,
 			'eta_at'          => (string) $order->get_meta( Delivery_Quote::ETA_META ) ?: null,
 		);
 	}

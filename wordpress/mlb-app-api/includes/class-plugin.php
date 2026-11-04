@@ -30,11 +30,13 @@ class Plugin {
 		Product_Fields::init();
 		Packaging::init();
 		Packaging_Cart::init();
+		Site_Shipping::init();
 		Order_Status::init();
 		Coupons::init();
 		Loyalty::init();
 		GrandChef_Diagnostics::init();
 
+		Admin\Kitchen_Role::init();
 		if ( is_admin() ) {
 			Admin\Orders_Page::init();
 			Admin\Settings_Page::init();

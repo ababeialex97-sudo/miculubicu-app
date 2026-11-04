@@ -18,11 +18,32 @@ class Push {
 	 * a missed notification must not block the status change itself.
 	 */
 	public static function notify_status( \WC_Order $order, string $status ): void {
-		$text = Push_Messages::for_status( $status, (string) $order->get_meta( '_mlb_fulfillment' ), (string) $order->get_order_number(), Delivery_Quote::eta_minutes_left( $order ) );
+		$text = Push_Messages::for_status( $status, (string) $order->get_meta( '_mlb_fulfillment' ), (string) $order->get_order_number(), Delivery_Quote::eta_minutes_left( $order ), self::eta_clock( $order ) );
 		if ( null === $text ) {
 			return;
 		}
+		self::send_for_order( $order, $text, $status );
+	}
 
+	public static function notify_delay( \WC_Order $order ): void {
+		$clock = self::eta_clock( $order );
+		if ( null !== $clock ) {
+			self::send_for_order( $order, Push_Messages::for_delay( (string) $order->get_meta( '_mlb_fulfillment' ), (string) $order->get_order_number(), $clock ), Statuses::for_order( $order ) );
+		}
+	}
+
+	/**
+	 * "19:45" in the site's time zone, or null when the order has no arrival time yet.
+	 */
+	private static function eta_clock( \WC_Order $order ): ?string {
+		$eta = strtotime( (string) $order->get_meta( Delivery_Quote::ETA_META ) );
+		return $eta ? wp_date( 'H:i', $eta ) : null;
+	}
+
+	/**
+	 * @param array{title: string, body: string} $text
+	 */
+	private static function send_for_order( \WC_Order $order, array $text, string $status ): void {
 		$data = array(
 			'orderId' => $order->get_id(),
 			'status'  => $status,

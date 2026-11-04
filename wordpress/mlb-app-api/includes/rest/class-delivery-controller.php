@@ -7,6 +7,8 @@ namespace MLB\AppApi\Rest;
 
 use MLB\AppApi\Delivery_Quote;
 use MLB\AppApi\Formatter;
+use MLB\AppApi\Places;
+use MLB\AppApi\Site_Orders;
 use MLB\AppApi\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -30,6 +32,64 @@ class Delivery_Controller {
 				),
 			)
 		);
+
+		$session = array(
+			'type'      => 'string',
+			'default'   => '',
+			'maxLength' => 64,
+			'pattern'   => '^[A-Za-z0-9_-]*$',
+		);
+
+		register_rest_route(
+			$namespace,
+			'/delivery/places',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'places' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'q'           => array(
+						'type'      => 'string',
+						'required'  => true,
+						'maxLength' => 120,
+					),
+					'location_id' => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'session'     => $session,
+				),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/delivery/places/(?P<place_id>[A-Za-z0-9_-]+)',
+			array(
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'place' ),
+				'permission_callback' => '__return_true',
+				'args'                => array( 'session' => $session ),
+			)
+		);
+	}
+
+	/**
+	 * Address suggestions for what the customer typed, nearest to the location first.
+	 */
+	public function places( \WP_REST_Request $request ) {
+		$location = Settings::get_location( (string) $request['location_id'] ) ?? Site_Orders::default_location( 'delivery' );
+		$near     = $location ? Settings::location_point( $location ) : null;
+		$result   = Places::suggest( (string) $request['q'], (string) $request['session'], $near );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
+	}
+
+	/**
+	 * The chosen suggestion as street, town and point.
+	 */
+	public function place( \WP_REST_Request $request ) {
+		$result = Places::details( (string) $request['place_id'], (string) $request['session'] );
+		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}
 
 	public function quote( \WP_REST_Request $request ) {
@@ -58,7 +118,7 @@ class Delivery_Controller {
 	}
 
 	/**
-	 * The delivery address; lat/lng come from the phone's location when the customer shares it.
+	 * The delivery address; lat/lng come from the address suggestion the customer picked.
 	 *
 	 * @return array<string, mixed>
 	 */

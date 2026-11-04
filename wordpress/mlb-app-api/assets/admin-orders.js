@@ -22,6 +22,10 @@
 		error: '',
 	};
 
+	// Preparation times offered when accepting an order, in minutes.
+	var PREP_CHOICES = [ 10, 15, 20, 30, 45, 60 ];
+	var DELAY_CHOICES = [ 5, 10, 15 ];
+
 	var ACTION_LABELS = {
 		confirmed: 'Acceptă',
 		preparing: 'Pune pe jar',
@@ -132,13 +136,25 @@
 			.then( render );
 	}
 
-	function changeStatus( order, status ) {
+	function changeStatus( order, status, prepMinutes ) {
 		if ( status === 'cancelled' && ! window.confirm( 'Anulezi comanda #' + order.number + '? Clientul primește o notificare.' ) ) {
 			return;
 		}
+		var body = { status: status };
+		if ( prepMinutes ) {
+			body.prep_minutes = prepMinutes;
+		}
+		send( order, 'orders/' + order.id + '/status', body );
+	}
+
+	function delay( order, minutes ) {
+		send( order, 'orders/' + order.id + '/delay', { minutes: minutes } );
+	}
+
+	function send( order, path, body ) {
 		state.busy[ order.id ] = true;
 		render();
-		request( 'orders/' + order.id + '/status', { method: 'POST', body: { status: status } } )
+		request( path, { method: 'POST', body: body } )
 			.then( function ( updated ) {
 				state.orders = state.orders.map( function ( item ) {
 					return item.id === updated.id ? updated : item;
@@ -189,16 +205,84 @@
 		return el( 'div', { class: 'mlb-toolbar' }, [
 			el( 'label', { for: 'mlb-scope', class: 'screen-reader-text', text: 'Ce comenzi' } ),
 			scopeSelect,
-			el( 'label', { for: 'mlb-location', class: 'screen-reader-text', text: 'Punct de lucru' } ),
-			locationSelect,
+			config.locations.length > 1 ? el( 'label', { for: 'mlb-location', class: 'screen-reader-text', text: 'Punct de lucru' } ) : null,
+			config.locations.length > 1 ? locationSelect : null,
 			el( 'button', { type: 'button', class: 'button', text: 'Reîncarcă', onClick: load } ),
 			config.testMode ? el( 'span', { class: 'mlb-badge mlb-badge-test', text: 'Mod de test' } ) : null,
 		] );
 	}
 
+	function clock( iso ) {
+		return iso ? new Date( iso ).toLocaleTimeString( 'ro-RO', { hour: '2-digit', minute: '2-digit' } ) : '';
+	}
+
+	// "Gata la 19:30 · la client în jur de 19:42 (12 min drum)"; nothing before the order is accepted.
+	function timesLine( order ) {
+		var open = [ 'confirmed', 'preparing', 'on_the_way', 'ready_for_pickup' ].indexOf( order.status ) !== -1;
+		if ( ! open || ! order.eta_at ) {
+			return null;
+		}
+		var parts = [];
+		if ( order.ready_at && order.status !== 'on_the_way' ) {
+			parts.push( ( order.fulfillment === 'pickup' ? 'Gata de ridicare la ' : 'Gata la ' ) + clock( order.ready_at ) );
+		}
+		if ( order.fulfillment === 'delivery' ) {
+			parts.push( 'la client în jur de ' + clock( order.eta_at ) + ( order.drive_minutes && order.status !== 'on_the_way' ? ' (' + order.drive_minutes + ' min drum)' : '' ) );
+		}
+		return el( 'p', { class: 'mlb-times', text: parts.join( ' · ' ).replace( /^la/, 'La' ) } );
+	}
+
+	// Accepting asks how long the kitchen needs; the customer gets the time in the app.
+	function acceptPicker( order, busy ) {
+		return el( 'div', { class: 'mlb-prep' }, [
+			el( 'span', { class: 'mlb-prep-label', text: 'Acceptă, gata în:' } ),
+			el(
+				'div',
+				{ class: 'mlb-chips' },
+				PREP_CHOICES.map( function ( minutes ) {
+					return el( 'button', {
+						type: 'button',
+						class: 'button button-primary',
+						text: minutes + ' min',
+						disabled: busy,
+						onClick: function () {
+							changeStatus( order, 'confirmed', minutes );
+						},
+					} );
+				} )
+			),
+		] );
+	}
+
+	function delayButtons( order, busy ) {
+		if ( [ 'confirmed', 'preparing' ].indexOf( order.status ) === -1 || ! order.ready_at ) {
+			return null;
+		}
+		return el(
+			'div',
+			{ class: 'mlb-chips mlb-delay' },
+			[ el( 'span', { class: 'mlb-muted', text: 'Mai durează:' } ) ].concat(
+				DELAY_CHOICES.map( function ( minutes ) {
+					return el( 'button', {
+						type: 'button',
+						class: 'button',
+						text: '+' + minutes + ' min',
+						disabled: busy,
+						onClick: function () {
+							delay( order, minutes );
+						},
+					} );
+				} )
+			)
+		);
+	}
+
 	function card( order ) {
 		var busy = !! state.busy[ order.id ];
-		var actions = order.next_statuses.map( function ( status ) {
+		var accepting = order.next_statuses.indexOf( 'confirmed' ) !== -1;
+		var actions = order.next_statuses.filter( function ( status ) {
+			return status !== 'confirmed';
+		} ).map( function ( status ) {
 			return el( 'button', {
 				type: 'button',
 				class: status === 'cancelled' ? 'button mlb-cancel' : 'button button-primary',
@@ -219,6 +303,7 @@
 			el( 'header', { class: 'mlb-card-head' }, [
 				el( 'strong', { text: '#' + order.number } ),
 				el( 'span', { class: 'mlb-badge', text: config.statuses[ order.status ] } ),
+				order.source === 'site' ? el( 'span', { class: 'mlb-badge mlb-badge-site', text: 'Site' } ) : null,
 				el( 'span', { class: 'mlb-muted', text: minutesAgo( order.created_at ) } ),
 			] ),
 			el( 'p', { class: 'mlb-who' }, [
@@ -237,6 +322,7 @@
 					] );
 				} )
 			),
+			addressWarning( order ),
 			order.note ? el( 'p', { class: 'mlb-note', text: order.note } ) : null,
 			extrasLine( order.extras ) ? el( 'p', { class: 'mlb-muted', text: extrasLine( order.extras ) } ) : null,
 			parseFloat( order.discount_total ) > 0
@@ -245,17 +331,42 @@
 					el( 'span', { text: '−' + money( order.discount_total ) } ),
 				] )
 				: null,
+			order.fulfillment === 'delivery'
+				? el( 'p', { class: 'mlb-shipping' }, [
+					el( 'span', { text: 'Livrare' + ( order.distance_km ? ' · ' + String( order.distance_km ).replace( '.', ',' ) + ' km' : '' ) } ),
+					el( 'span', { text: parseFloat( order.shipping_total ) > 0 ? money( order.shipping_total ) : 'gratuită' } ),
+				] )
+				: null,
 			el( 'p', { class: 'mlb-total' }, [
 				el( 'span', { text: 'mlb_card' === order.payment_method ? 'Total, card' : 'Total, numerar' } ),
 				el( 'strong', { text: money( order.total ) } ),
 			] ),
 			el( 'p', { class: order.grandchef.sent ? 'mlb-gc mlb-gc-ok' : 'mlb-gc mlb-gc-missing' }, [
-				order.grandchef.sent ? 'Trimisă la GrandChef #' + order.grandchef.order_id : 'Netrimisă la GrandChef: verifică în WooCommerce',
-				' · ',
-				el( 'a', { href: order.edit_url, text: 'Deschide comanda' } ),
+				order.grandchef.sent
+					? 'Trimisă la GrandChef #' + order.grandchef.order_id
+					: order.edit_url
+					? 'Netrimisă la GrandChef: verifică în WooCommerce'
+					: 'Netrimisă la GrandChef: anunță administratorul',
+				order.edit_url ? ' · ' : null,
+				order.edit_url ? el( 'a', { href: order.edit_url, text: 'Deschide comanda' } ) : null,
 			] ),
+			timesLine( order ),
+			accepting ? acceptPicker( order, busy ) : null,
+			delayButtons( order, busy ),
 			actions.length ? el( 'div', { class: 'mlb-actions' }, actions ) : null,
 		] );
+	}
+
+	// The map couldn't place the address exactly: the courier should check with the customer.
+	function addressWarning( order ) {
+		if ( order.fulfillment !== 'delivery' ) {
+			return null;
+		}
+		var text = {
+			street: 'Pe hartă s-a găsit doar strada, nu și numărul. Verifică adresa cu clientul.',
+			none: 'Adresa nu a fost găsită pe hartă: s-a aplicat costul fix. Sună clientul pentru adresă.',
+		}[ order.address_match ];
+		return text ? el( 'p', { class: 'mlb-address-warning', text: text } ) : null;
 	}
 
 	// "2 pachete, 1 platou · gratis: 12 felii pâine, 240 ml muștar"; older orders have no extras.
