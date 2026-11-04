@@ -153,7 +153,7 @@ Configurare:
 
 Calcul: pentru fiecare cutie, bucățile se adună și se împart la capacitate, rotunjit în sus; micii și cefele nu stau în aceeași cutie (12 mici = 2 pachete, 8 mici + 4 cefe = 2 pachete). Fiecare platou are ambalajul lui. Opțional, orice comandă primește minim un pachet, iar la ridicare se poate scuti ambalajul. Ambalajul intră după cupoane, deci reducerile nu se aplică la el, iar pragul de livrare gratuită se uită doar la mâncare. Pâinea și muștarul intră la 0 lei; fără produse alese pentru ele, se scriu în observațiile comenzii trimise la GrandChef.
 
-Pe site, ambalajul și gratuitățile apar singure în coș, iar clientul nu le poate scoate sau modifica; în coș și la finalizare apare rândul „Din partea casei”.
+Pe site, ambalajul și gratuitățile apar singure în coș, iar clientul nu le poate scoate sau modifica; sub rândul cu ambalajul apare „Din partea casei: …”, și în coșul nou (blocuri), și în cel clasic.
 
 Fără produsul pentru pachet ales în setări, nu se adaugă nimic (comportamentul de până acum).
 

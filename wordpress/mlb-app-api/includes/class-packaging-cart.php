@@ -26,8 +26,11 @@ class Packaging_Cart {
 		add_filter( 'woocommerce_cart_item_remove_link', array( self::class, 'no_remove_link' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( self::class, 'mark_line' ), 10, 3 );
 		add_action( 'woocommerce_checkout_create_order', array( self::class, 'mark_order' ) );
-		add_action( 'woocommerce_cart_totals_before_order_total', array( self::class, 'freebies_row' ) );
-		add_action( 'woocommerce_review_order_before_order_total', array( self::class, 'freebies_row' ) );
+		// The block checkout skips the classic hooks above; it sets the customer note before this one.
+		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( self::class, 'mark_order' ) );
+		add_filter( 'woocommerce_store_api_product_quantity_editable', array( self::class, 'quantity_editable' ), 10, 3 );
+		// Shown under the pack line: the block cart and checkout render item data, not the classic totals hooks.
+		add_filter( 'woocommerce_get_item_data', array( self::class, 'freebies_item_data' ), 10, 2 );
 		// Discounts never apply to packaging, on the site or in the app.
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( self::class, 'no_discount' ), 10, 2 );
 	}
@@ -98,6 +101,17 @@ class Packaging_Cart {
 	}
 
 	/**
+	 * Block cart: no quantity picker or remove button on packaging lines.
+	 *
+	 * @param bool                 $editable
+	 * @param mixed                $product
+	 * @param array<string, mixed> $item
+	 */
+	public static function quantity_editable( $editable, $product, $item ): bool {
+		return empty( $item[ self::CART_KEY ] ) && (bool) $editable;
+	}
+
+	/**
 	 * @param string $link
 	 * @param string $key
 	 */
@@ -123,14 +137,37 @@ class Packaging_Cart {
 		}
 	}
 
-	public static function freebies_row(): void {
-		$cart    = WC()->cart;
-		$summary = $cart ? Packaging::summary( self::food_lines( $cart ), self::fulfillment() ) : null;
-		$label   = $summary ? Packaging::freebies_label( $summary['bread'], $summary['mustard_ml'] ) : '';
-		if ( '' === $label ) {
-			return;
+	/**
+	 * @param array<int, array<string, string>> $data
+	 * @param array<string, mixed>              $item
+	 * @return array<int, array<string, string>>
+	 */
+	public static function freebies_item_data( $data, $item ) {
+		$type = (string) ( $item[ self::CART_KEY ] ?? '' );
+		$cart = WC()->cart;
+		if ( ! $cart || ( 'pack' !== $type && ! ( 'platter' === $type && ! self::has_line( $cart, 'pack' ) ) ) ) {
+			return $data;
 		}
-		echo '<tr class="mlb-freebies"><th>Din partea casei</th><td data-title="Din partea casei">' . esc_html( $label ) . '</td></tr>';
+
+		$summary = Packaging::summary( self::food_lines( $cart ), self::fulfillment() );
+		$label   = $summary ? Packaging::freebies_label( $summary['bread'], $summary['mustard_ml'] ) : '';
+		if ( '' !== $label ) {
+			$data   = (array) $data;
+			$data[] = array(
+				'key'   => 'Din partea casei',
+				'value' => $label,
+			);
+		}
+		return $data;
+	}
+
+	private static function has_line( \WC_Cart $cart, string $type ): bool {
+		foreach ( $cart->get_cart() as $item ) {
+			if ( ( $item[ self::CART_KEY ] ?? '' ) === $type ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
