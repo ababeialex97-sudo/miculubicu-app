@@ -40,7 +40,8 @@ Namespace REST: `/wp-json/mlb/v1`. Necesită WordPress 6.5+, WooCommerce și PHP
 | POST | `/delivery/quote` | – | Costul livrării pentru o adresă (`location_id`, `address` cu `address_1`, `city` sau `lat`/`lng`): distanța pe drum, prețul tranșei, dacă se livrează acolo |
 | POST | `/cart/preview` | token opțional | Verifică codurile promoționale și calculează reducerea, livrarea și totalul |
 | GET | `/admin/orders` | personal (cookie WordPress) | Comenzile din aplicație pentru panou (`scope=active` sau `today`) |
-| POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push |
+| POST | `/admin/orders/{id}/status` | personal (cookie WordPress) | Schimbă statusul și trimite push; la acceptare, `prep_minutes` e timpul de preparare |
+| POST | `/admin/orders/{id}/delay` | personal (cookie WordPress) | `minutes`: comanda mai durează; mută orele și anunță clientul |
 | POST / DELETE | `/push-tokens` | token | Înregistrează / șterge tokenul Expo Push al dispozitivului |
 
 Autentificarea folosește `Authorization: Bearer <token>` (JWT HS256, valabil 30 de zile). Schimbarea parolei invalidează toate tokenurile clientului.
@@ -139,6 +140,8 @@ Cum funcționează:
 - o adresă pe care harta n-o găsește (sau la care Google nu răspunde) primește costul fix al livrării, ca înainte; comanda nu e blocată din cauza hărții;
 - titlul metodei de livrare rămâne același, deci asocierea din GrandChef nu se schimbă;
 - rezultatele se păstrează 30 de zile pentru aceeași adresă, așa că o adresă se plătește la Google o singură dată.
+
+**Timpul de preparare.** În panou, comanda nouă se acceptă alegând cât durează prepararea (10, 15, 20, 30, 45 sau 60 de minute). Serverul calculează ora la care e gata și, la livrare, adaugă drumul cu traficul estimat de Google pentru ora plecării. Clientul primește în notificare și în aplicație „Ajunge în jur de 19:45” (la ridicare, „Gata de ridicare în jur de 19:30”). Dacă bucătăria are nevoie de mai mult, butoanele „+5 / +10 / +15 min” mută ora și anunță clientul. Fără Google, drumul se estimează din distanța comenzii.
 
 Când personalul pune comanda pe „În drum spre tine”, serverul cere la Google durata drumului cu traficul din acel moment. Clientul vede „Ajunge în jur de 19:42” în aplicație și „Ajunge în aproximativ 12 minute” în notificare.
 

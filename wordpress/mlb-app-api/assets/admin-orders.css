@@ -25,3 +25,8 @@
 .mlb-actions .button { min-height: 40px; }
 .mlb-actions .mlb-cancel { margin-left: auto; color: #b32d2e; border-color: #b32d2e; }
 .mlb-empty { font-size: 15px; color: #646970; }
+.mlb-times { font-weight: 600; color: #1d2327; }
+.mlb-prep { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.mlb-prep-label { font-weight: 600; }
+.mlb-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mlb-chips .button { min-height: 40px; min-width: 64px; }

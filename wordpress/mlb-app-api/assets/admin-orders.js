@@ -22,6 +22,10 @@
 		error: '',
 	};
 
+	// Preparation times offered when accepting an order, in minutes.
+	var PREP_CHOICES = [ 10, 15, 20, 30, 45, 60 ];
+	var DELAY_CHOICES = [ 5, 10, 15 ];
+
 	var ACTION_LABELS = {
 		confirmed: 'Acceptă',
 		preparing: 'Pune pe jar',
@@ -132,13 +136,25 @@
 			.then( render );
 	}
 
-	function changeStatus( order, status ) {
+	function changeStatus( order, status, prepMinutes ) {
 		if ( status === 'cancelled' && ! window.confirm( 'Anulezi comanda #' + order.number + '? Clientul primește o notificare.' ) ) {
 			return;
 		}
+		var body = { status: status };
+		if ( prepMinutes ) {
+			body.prep_minutes = prepMinutes;
+		}
+		send( order, 'orders/' + order.id + '/status', body );
+	}
+
+	function delay( order, minutes ) {
+		send( order, 'orders/' + order.id + '/delay', { minutes: minutes } );
+	}
+
+	function send( order, path, body ) {
 		state.busy[ order.id ] = true;
 		render();
-		request( 'orders/' + order.id + '/status', { method: 'POST', body: { status: status } } )
+		request( path, { method: 'POST', body: body } )
 			.then( function ( updated ) {
 				state.orders = state.orders.map( function ( item ) {
 					return item.id === updated.id ? updated : item;
@@ -196,9 +212,77 @@
 		] );
 	}
 
+	function clock( iso ) {
+		return iso ? new Date( iso ).toLocaleTimeString( 'ro-RO', { hour: '2-digit', minute: '2-digit' } ) : '';
+	}
+
+	// "Gata la 19:30 · la client în jur de 19:42 (12 min drum)"; nothing before the order is accepted.
+	function timesLine( order ) {
+		var open = [ 'confirmed', 'preparing', 'on_the_way', 'ready_for_pickup' ].indexOf( order.status ) !== -1;
+		if ( ! open || ! order.eta_at ) {
+			return null;
+		}
+		var parts = [];
+		if ( order.ready_at && order.status !== 'on_the_way' ) {
+			parts.push( ( order.fulfillment === 'pickup' ? 'Gata de ridicare la ' : 'Gata la ' ) + clock( order.ready_at ) );
+		}
+		if ( order.fulfillment === 'delivery' ) {
+			parts.push( 'la client în jur de ' + clock( order.eta_at ) + ( order.drive_minutes && order.status !== 'on_the_way' ? ' (' + order.drive_minutes + ' min drum)' : '' ) );
+		}
+		return el( 'p', { class: 'mlb-times', text: parts.join( ' · ' ).replace( /^la/, 'La' ) } );
+	}
+
+	// Accepting asks how long the kitchen needs; the customer gets the time in the app.
+	function acceptPicker( order, busy ) {
+		return el( 'div', { class: 'mlb-prep' }, [
+			el( 'span', { class: 'mlb-prep-label', text: 'Acceptă, gata în:' } ),
+			el(
+				'div',
+				{ class: 'mlb-chips' },
+				PREP_CHOICES.map( function ( minutes ) {
+					return el( 'button', {
+						type: 'button',
+						class: 'button button-primary',
+						text: minutes + ' min',
+						disabled: busy,
+						onClick: function () {
+							changeStatus( order, 'confirmed', minutes );
+						},
+					} );
+				} )
+			),
+		] );
+	}
+
+	function delayButtons( order, busy ) {
+		if ( [ 'confirmed', 'preparing' ].indexOf( order.status ) === -1 || ! order.ready_at ) {
+			return null;
+		}
+		return el(
+			'div',
+			{ class: 'mlb-chips mlb-delay' },
+			[ el( 'span', { class: 'mlb-muted', text: 'Mai durează:' } ) ].concat(
+				DELAY_CHOICES.map( function ( minutes ) {
+					return el( 'button', {
+						type: 'button',
+						class: 'button',
+						text: '+' + minutes + ' min',
+						disabled: busy,
+						onClick: function () {
+							delay( order, minutes );
+						},
+					} );
+				} )
+			)
+		);
+	}
+
 	function card( order ) {
 		var busy = !! state.busy[ order.id ];
-		var actions = order.next_statuses.map( function ( status ) {
+		var accepting = order.next_statuses.indexOf( 'confirmed' ) !== -1;
+		var actions = order.next_statuses.filter( function ( status ) {
+			return status !== 'confirmed';
+		} ).map( function ( status ) {
 			return el( 'button', {
 				type: 'button',
 				class: status === 'cancelled' ? 'button mlb-cancel' : 'button button-primary',
@@ -254,6 +338,9 @@
 				' · ',
 				el( 'a', { href: order.edit_url, text: 'Deschide comanda' } ),
 			] ),
+			timesLine( order ),
+			accepting ? acceptPicker( order, busy ) : null,
+			delayButtons( order, busy ),
 			actions.length ? el( 'div', { class: 'mlb-actions' }, actions ) : null,
 		] );
 	}

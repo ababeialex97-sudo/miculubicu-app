@@ -173,7 +173,10 @@ export type Order = {
   note: string;
   // Missing on sites still running an older mlb-app-api.
   distance_km?: number | null;
-  // When the courier should arrive, set as the order leaves the restaurant.
+  // When the kitchen expects the order ready, set when it accepts with its preparation time.
+  ready_at?: string | null;
+  // When it reaches the customer (or is ready for pickup): preparation + drive, then live
+  // traffic again as the courier leaves.
   eta_at?: string | null;
   extras?: OrderExtras;
 };

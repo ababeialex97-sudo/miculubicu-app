@@ -34,7 +34,9 @@ export default function OrderStatusScreen() {
   const currentIndex = steps.findIndex((s) => s.status === data.status);
   const cancelled = data.status === 'cancelled';
   const reachedAt = new Map(data.status_history.map((h) => [h.status, h.at]));
-  const eta = data.status === 'on_the_way' ? etaLabel(data.eta_at) : null;
+  // Known once the kitchen accepts with its preparation time; for delivery, updated with live traffic when the courier leaves.
+  const etaStatuses = data.fulfillment === 'pickup' ? ['confirmed', 'preparing'] : ['confirmed', 'preparing', 'on_the_way'];
+  const eta = etaStatuses.includes(data.status) ? etaLabel(data.eta_at, new Date(), data.fulfillment === 'pickup' ? 'pickup' : 'delivery') : null;
   const extras = data.extras;
   const freebies = extras ? freebiesLabel(extras.bread, extras.mustard_ml) : null;
 

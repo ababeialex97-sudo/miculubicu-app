@@ -16,10 +16,11 @@ class Push_Messages {
 
 	/**
 	 * Title and body for a status change, or null when the status needs no notification.
+	 * $eta_clock ("19:45") is when an accepted order arrives, or is ready for pickup.
 	 *
 	 * @return array{title: string, body: string}|null
 	 */
-	public static function for_status( string $status, string $fulfillment, string $order_number, ?int $eta_minutes = null ): ?array {
+	public static function for_status( string $status, string $fulfillment, string $order_number, ?int $eta_minutes = null, ?string $eta_clock = null ): ?array {
 		$texts = array(
 			'confirmed'        => array( 'Comanda a fost acceptată', 'Restaurantul a primit comanda #%s și se apucă de ea.' ),
 			'preparing'        => array( 'Comanda ta e pe jar', 'Comanda #%s se pregătește acum.' ),
@@ -34,6 +35,9 @@ class Push_Messages {
 		}
 
 		$body = sprintf( $texts[ $status ][1], $order_number );
+		if ( 'confirmed' === $status && $eta_clock ) {
+			$body = sprintf( 'pickup' === $fulfillment ? 'Comanda #%s te așteaptă în jur de ora %s.' : 'Comanda #%s ajunge la tine în jur de ora %s.', $order_number, $eta_clock );
+		}
 		if ( 'on_the_way' === $status && null !== $eta_minutes ) {
 			$body .= sprintf( ' Ajunge în aproximativ %d %s.', $eta_minutes, 1 === $eta_minutes ? 'minut' : ( $eta_minutes < 20 ? 'minute' : 'de minute' ) );
 		}
@@ -41,6 +45,18 @@ class Push_Messages {
 		return array(
 			'title' => $texts[ $status ][0],
 			'body'  => $body,
+		);
+	}
+
+	/**
+	 * The kitchen moved the time: when the order now arrives, or is ready for pickup.
+	 *
+	 * @return array{title: string, body: string}
+	 */
+	public static function for_delay( string $fulfillment, string $order_number, string $eta_clock ): array {
+		return array(
+			'title' => 'Comanda mai durează puțin',
+			'body'  => sprintf( 'pickup' === $fulfillment ? 'Comanda #%s va fi gata în jur de ora %s. Ne pare rău pentru așteptare!' : 'Comanda #%s ajunge la tine în jur de ora %s. Ne pare rău pentru așteptare!', $order_number, $eta_clock ),
 		);
 	}
 

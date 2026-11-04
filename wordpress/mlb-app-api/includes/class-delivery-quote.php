@@ -18,6 +18,9 @@ class Delivery_Quote {
 	public const DEST_META     = '_mlb_delivery_point';
 	public const DISTANCE_META = '_mlb_delivery_km';
 	public const ETA_META      = '_mlb_eta_at';
+	public const READY_META    = '_mlb_ready_at';
+	public const PREP_META     = '_mlb_prep_minutes';
+	public const DRIVE_META    = '_mlb_drive_minutes';
 
 	private const CACHE_PREFIX = 'mlb_dq_';
 	private const CACHE_TTL    = MONTH_IN_SECONDS;
@@ -76,10 +79,10 @@ class Delivery_Quote {
 	}
 
 	/**
-	 * Minutes from the location to the order's address with traffic right now, or null when
-	 * the order has no point on the map or Google can't be reached.
+	 * Minutes from the location to the order's address with traffic at $departure (now when
+	 * null), or null when the order has no point on the map or Google can't be reached.
 	 */
-	public static function eta_minutes( \WC_Order $order ): ?int {
+	public static function eta_minutes( \WC_Order $order, ?int $departure = null ): ?int {
 		$location = Settings::get_location( (string) $order->get_meta( '_mlb_location_id' ) );
 		$from     = $location ? Settings::location_point( $location ) : null;
 		$to       = $order->get_meta( self::DEST_META );
@@ -87,7 +90,7 @@ class Delivery_Quote {
 			return null;
 		}
 
-		$route = Maps::route( $from, array( 'lat' => (float) $to['lat'], 'lng' => (float) $to['lng'] ), true );
+		$route = Maps::route( $from, array( 'lat' => (float) $to['lat'], 'lng' => (float) $to['lng'] ), true, $departure );
 		if ( is_wp_error( $route ) ) {
 			self::log( $route );
 			return null;
@@ -106,6 +109,51 @@ class Delivery_Quote {
 		}
 		$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, time() + $minutes * MINUTE_IN_SECONDS ) );
 		$order->add_order_note( sprintf( 'Timp estimat până la client, cu traficul de acum: %d min.', $minutes ) );
+	}
+
+	/**
+	 * When the kitchen accepts the order with its preparation time: ready at now + preparation,
+	 * and for delivery at the customer after the drive, with the traffic expected when the
+	 * courier leaves. Not saved here: the status change saves the order.
+	 */
+	public static function record_estimate( \WC_Order $order, int $prep_minutes ): void {
+		$ready = time() + $prep_minutes * MINUTE_IN_SECONDS;
+		$order->update_meta_data( self::PREP_META, $prep_minutes );
+		$order->update_meta_data( self::READY_META, gmdate( DATE_ATOM, $ready ) );
+
+		if ( 'delivery' !== $order->get_meta( '_mlb_fulfillment' ) ) {
+			$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, $ready ) );
+			$order->add_order_note( sprintf( 'Timp de preparare: %d min. Gata de ridicare la %s.', $prep_minutes, wp_date( 'H:i', $ready ) ) );
+			return;
+		}
+
+		$drive = self::eta_minutes( $order, $ready ) ?? self::drive_guess( $order );
+		$order->update_meta_data( self::DRIVE_META, $drive );
+		$order->update_meta_data( self::ETA_META, gmdate( DATE_ATOM, $ready + $drive * MINUTE_IN_SECONDS ) );
+		$order->add_order_note( sprintf( 'Timp de preparare: %d min, drum: %d min. Ajunge la client în jur de %s.', $prep_minutes, $drive, wp_date( 'H:i', $ready + $drive * MINUTE_IN_SECONDS ) ) );
+	}
+
+	/**
+	 * The kitchen needs longer: ready time and arrival move by $minutes. Not saved here.
+	 */
+	public static function delay( \WC_Order $order, int $minutes ): void {
+		foreach ( array( self::READY_META, self::ETA_META ) as $key ) {
+			$at = strtotime( (string) $order->get_meta( $key ) );
+			if ( $at ) {
+				$order->update_meta_data( $key, gmdate( DATE_ATOM, max( $at, time() ) + $minutes * MINUTE_IN_SECONDS ) );
+			}
+		}
+		$order->update_meta_data( self::PREP_META, (int) $order->get_meta( self::PREP_META ) + $minutes );
+		$order->add_order_note( sprintf( 'Întârziere anunțată clientului: +%d min.', $minutes ) );
+	}
+
+	/**
+	 * Without Google: about 2.5 minutes per km in town plus parking, from the distance saved
+	 * with the order, or 20 minutes when there is none.
+	 */
+	private static function drive_guess( \WC_Order $order ): int {
+		$km = (float) $order->get_meta( self::DISTANCE_META );
+		return $km > 0 ? (int) ceil( $km * 2.5 ) + 5 : 20;
 	}
 
 	/**

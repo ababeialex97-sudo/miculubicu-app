@@ -30,7 +30,7 @@ export function lowestBandFee(location: Location | undefined): number | null {
 }
 
 /** "Ajunge în jur de 19:42", or null when there is no arrival time or it has passed. */
-export function etaLabel(etaAt: string | null | undefined, now: Date = new Date()): string | null {
+export function etaLabel(etaAt: string | null | undefined, now: Date = new Date(), fulfillment: 'delivery' | 'pickup' = 'delivery'): string | null {
   if (!etaAt) {
     return null;
   }
@@ -38,5 +38,5 @@ export function etaLabel(etaAt: string | null | undefined, now: Date = new Date(
   if (Number.isNaN(eta.getTime()) || eta.getTime() <= now.getTime()) {
     return null;
   }
-  return `Ajunge în jur de ${formatTime(etaAt)}`;
+  return `${fulfillment === 'pickup' ? 'Gata de ridicare' : 'Ajunge'} în jur de ${formatTime(etaAt)}`;
 }

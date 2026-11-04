@@ -5,6 +5,7 @@
 
 namespace MLB\AppApi\Rest;
 
+use MLB\AppApi\Delivery_Quote;
 use MLB\AppApi\Formatter;
 use MLB\AppApi\Order_Status;
 use MLB\AppApi\Settings;
@@ -43,9 +44,32 @@ class Admin_Orders_Controller {
 				'callback'            => array( $this, 'change_status' ),
 				'permission_callback' => array( self::class, 'can_manage' ),
 				'args'                => array(
-					'status' => array(
+					'status'       => array(
 						'type'     => 'string',
 						'enum'     => array_keys( Statuses::labels() ),
+						'required' => true,
+					),
+					'prep_minutes' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+						'maximum' => 240,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/admin/orders/(?P<id>\d+)/delay',
+			array(
+				'methods'             => \WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'delay' ),
+				'permission_callback' => array( self::class, 'can_manage' ),
+				'args'                => array(
+					'minutes' => array(
+						'type'     => 'integer',
+						'minimum'  => 1,
+						'maximum'  => 120,
 						'required' => true,
 					),
 				),
@@ -88,17 +112,43 @@ class Admin_Orders_Controller {
 	}
 
 	public function change_status( \WP_REST_Request $request ) {
-		$order = wc_get_order( (int) $request['id'] );
-		if ( ! $order instanceof \WC_Order || 'app' !== $order->get_meta( '_mlb_source' ) ) {
-			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
+		$order = self::app_order( (int) $request['id'] );
+		if ( is_wp_error( $order ) ) {
+			return $order;
 		}
 
-		$result = Order_Status::change( $order, (string) $request['status'] );
+		$prep   = null === $request['prep_minutes'] ? null : (int) $request['prep_minutes'];
+		$result = Order_Status::change( $order, (string) $request['status'], $prep );
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
 		return rest_ensure_response( self::format( wc_get_order( $order->get_id() ) ) );
+	}
+
+	public function delay( \WP_REST_Request $request ) {
+		$order = self::app_order( (int) $request['id'] );
+		if ( is_wp_error( $order ) ) {
+			return $order;
+		}
+
+		$result = Order_Status::delay( $order, (int) $request['minutes'] );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return rest_ensure_response( self::format( wc_get_order( $order->get_id() ) ) );
+	}
+
+	/**
+	 * @return \WC_Order|\WP_Error
+	 */
+	private static function app_order( int $id ) {
+		$order = wc_get_order( $id );
+		if ( ! $order instanceof \WC_Order || 'app' !== $order->get_meta( '_mlb_source' ) ) {
+			return new \WP_Error( 'mlb_order_not_found', 'Comanda nu a fost găsită.', array( 'status' => 404 ) );
+		}
+		return $order;
 	}
 
 	/**
@@ -117,6 +167,8 @@ class Admin_Orders_Controller {
 				'location_name' => $location ? (string) $location['name'] : '',
 				'note'          => $order->get_customer_note(),
 				'next_statuses' => Statuses::next( $data['status'], (string) $data['fulfillment'] ),
+				'prep_minutes'  => $order->meta_exists( Delivery_Quote::PREP_META ) ? (int) $order->get_meta( Delivery_Quote::PREP_META ) : null,
+				'drive_minutes' => $order->meta_exists( Delivery_Quote::DRIVE_META ) ? (int) $order->get_meta( Delivery_Quote::DRIVE_META ) : null,
 				'grandchef'     => array(
 					'sent'     => '' !== self::grandchef_order_id( $order ),
 					'order_id' => self::grandchef_order_id( $order ),
