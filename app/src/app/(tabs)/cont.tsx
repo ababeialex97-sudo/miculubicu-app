@@ -14,6 +14,21 @@ import { useCart } from '@/store/cart';
 import { useSession } from '@/store/session';
 
 const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://miculubicu.ro/politica-de-confidentialitate/';
+const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL ?? 'https://miculubicu.ro/termeni-si-conditii/';
+
+/** Shown signed in or not: the stores want the privacy policy reachable inside the app. */
+function LegalLinks() {
+  return (
+    <View style={styles.legal}>
+      <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(TERMS_URL)} style={styles.link}>
+        <AppText style={styles.linkText}>Termeni și condiții</AppText>
+      </Pressable>
+      <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)} style={styles.link}>
+        <AppText style={styles.linkText}>Politica de confidențialitate</AppText>
+      </Pressable>
+    </View>
+  );
+}
 
 export default function AccountScreen() {
   const customer = useSession((s) => s.customer);
@@ -24,6 +39,7 @@ export default function AccountScreen() {
         <AppText variant="title">Contul tău</AppText>
         <AppText style={{ textAlign: 'center' }}>Cu un cont comanzi mai repede și îți vezi istoricul.</AppText>
         <Button label="Intră în cont sau creează unul" onPress={() => router.push('/autentificare')} />
+        <LegalLinks />
       </Centered>
     );
   }
@@ -98,9 +114,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
         <Button label="Salvează" loading={update.isPending} onPress={save} />
         <Button label="Ieși din cont" variant="outline" onPress={() => void logout()} />
 
-        <Pressable accessibilityRole="link" onPress={() => void WebBrowser.openBrowserAsync(PRIVACY_URL)} style={styles.link}>
-          <AppText style={styles.linkText}>Politica de confidențialitate</AppText>
-        </Pressable>
+        <LegalLinks />
 
         {confirmingDelete ? (
           <View style={styles.danger}>
@@ -126,7 +140,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, gap: 14 },
   error: { fontFamily: fonts.medium, fontSize: 13, color: colors.error },
-  link: { minHeight: minTouchSize, justifyContent: 'center', alignSelf: 'flex-start' },
+  legal: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 },
+  link: { minHeight: minTouchSize, justifyContent: 'center' },
   linkText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   dangerText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.error },
   danger: { gap: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
