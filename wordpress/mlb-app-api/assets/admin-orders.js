@@ -330,6 +330,12 @@
 					el( 'span', { text: '−' + money( order.discount_total ) } ),
 				] )
 				: null,
+			order.fulfillment === 'delivery'
+				? el( 'p', { class: 'mlb-shipping' }, [
+					el( 'span', { text: 'Livrare' + ( order.distance_km ? ' · ' + String( order.distance_km ).replace( '.', ',' ) + ' km' : '' ) } ),
+					el( 'span', { text: parseFloat( order.shipping_total ) > 0 ? money( order.shipping_total ) : 'gratuită' } ),
+				] )
+				: null,
 			el( 'p', { class: 'mlb-total' }, [
 				el( 'span', { text: 'mlb_card' === order.payment_method ? 'Total, card' : 'Total, numerar' } ),
 				el( 'strong', { text: money( order.total ) } ),

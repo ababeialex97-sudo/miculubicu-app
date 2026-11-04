@@ -142,6 +142,7 @@ Cum funcționează:
 - o adresă pe care harta n-o găsește (sau la care Google nu răspunde) primește costul fix al livrării, ca înainte; comanda nu e blocată din cauza hărții;
 - titlul metodei de livrare rămâne același, deci asocierea din GrandChef nu se schimbă;
 - rezultatele se păstrează 30 de zile pentru aceeași adresă, așa că o adresă se plătește la Google o singură dată.
+- **pe site** se aplică aceleași tranșe: la finalizarea comenzii, prețul metodei „Livrare la domiciliu” se schimbă după adresa scrisă de client (de la primul punct de lucru cu livrare); prea departe, rămâne doar ridicarea.
 
 **Timpul de preparare.** În panou, comanda nouă se acceptă alegând cât durează prepararea (10, 15, 20, 30, 45 sau 60 de minute). Serverul calculează ora la care e gata și, la livrare, adaugă drumul cu traficul estimat de Google pentru ora plecării. Clientul primește în notificare și în aplicație „Ajunge în jur de 19:45” (la ridicare, „Gata de ridicare în jur de 19:30”). Dacă bucătăria are nevoie de mai mult, butoanele „+5 / +10 / +15 min” mută ora și anunță clientul. Fără Google, drumul se estimează din distanța comenzii.
 

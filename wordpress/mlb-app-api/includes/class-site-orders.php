@@ -59,13 +59,7 @@ class Site_Orders {
 		}
 
 		$fulfillment = self::chose_pickup( $order ) ? 'pickup' : 'delivery';
-		$location    = null;
-		foreach ( Settings::get_locations() as $candidate ) {
-			if ( ! empty( $candidate[ $fulfillment ] ) ) {
-				$location = $candidate;
-				break;
-			}
-		}
+		$location    = self::default_location( $fulfillment );
 
 		$order->update_meta_data( '_mlb_source', self::SOURCE );
 		$order->update_meta_data( '_mlb_fulfillment', $fulfillment );
@@ -73,6 +67,20 @@ class Site_Orders {
 			$order->update_meta_data( '_mlb_location_id', (string) $location['id'] );
 		}
 		$order->save();
+	}
+
+	/**
+	 * The location website orders go to: the first one offering delivery, or pickup.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	public static function default_location( string $fulfillment ): ?array {
+		foreach ( Settings::get_locations() as $location ) {
+			if ( ! empty( $location[ $fulfillment ] ) ) {
+				return $location;
+			}
+		}
+		return null;
 	}
 
 	private static function chose_pickup( \WC_Order $order ): bool {
