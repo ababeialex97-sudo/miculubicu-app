@@ -90,18 +90,32 @@ class Packaging {
 	 */
 	public static function product_rules( \WC_Product $product ): array {
 		$id = $product->get_parent_id() ?: $product->get_id();
-		if ( ! metadata_exists( 'post', $id, self::UNITS_META ) ) {
+		$rules = self::saved_rules( $id );
+		if ( null === $rules ) {
 			$parent = $product->get_parent_id() ? wc_get_product( $id ) : $product;
 			return Packaging_Rules::guess( $parent ? $parent->get_name() : $product->get_name() );
 		}
-		return array(
+		return $rules;
+	}
+
+	/**
+	 * The rules saved on a product, or null when they are all empty: a product saved before
+	 * anyone filled the fields in counts as not set up, so its name still decides.
+	 *
+	 * @return array{units: int, box: string, platter: bool, bread: int, mustard: int}|null
+	 */
+	private static function saved_rules( int $id ): ?array {
+		$box   = trim( (string) get_post_meta( $id, self::BOX_META, true ) );
+		$rules = array(
 			'units'   => max( 0, (int) get_post_meta( $id, self::UNITS_META, true ) ),
 			// "Ceafă" and "ceafa" are the same box.
-			'box'     => Packaging_Rules::box_key( remove_accents( (string) get_post_meta( $id, self::BOX_META, true ) ) ),
+			'box'     => Packaging_Rules::box_key( remove_accents( $box ) ),
 			'platter' => 'yes' === get_post_meta( $id, self::PLATTER_META, true ),
 			'bread'   => max( 0, (int) get_post_meta( $id, self::BREAD_META, true ) ),
 			'mustard' => max( 0, (int) get_post_meta( $id, self::MUSTARD_META, true ) ),
 		);
+		$empty = 0 === $rules['units'] && '' === $box && ! $rules['platter'] && 0 === $rules['bread'] && 0 === $rules['mustard'];
+		return $empty ? null : $rules;
 	}
 
 	/**
@@ -266,7 +280,7 @@ class Packaging {
 	public static function render_product_fields(): void {
 		global $post;
 		// Not set up yet: show what the name suggests, saved as soon as the product is updated.
-		$guess = $post && ! metadata_exists( 'post', $post->ID, self::UNITS_META ) ? Packaging_Rules::guess( get_the_title( $post ) ) : null;
+		$guess = $post && null === self::saved_rules( $post->ID ) ? Packaging_Rules::guess( get_the_title( $post ) ) : null;
 
 		echo '<div class="options_group">';
 		woocommerce_wp_text_input(
