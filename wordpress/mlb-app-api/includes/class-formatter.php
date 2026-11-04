@@ -67,7 +67,8 @@ class Formatter {
 	public static function order( \WC_Order $order ): array {
 		$items = array();
 		foreach ( $order->get_items() as $item ) {
-			if ( ! $item instanceof \WC_Order_Item_Product ) {
+			// Packaging and free extras are shown on their own, under `extras`.
+			if ( ! $item instanceof \WC_Order_Item_Product || '' !== (string) $item->get_meta( Packaging::EXTRA_META ) ) {
 				continue;
 			}
 			$product = $item->get_product();
@@ -96,7 +97,8 @@ class Formatter {
 			'fulfillment'     => (string) $order->get_meta( '_mlb_fulfillment' ),
 			'location_id'     => (string) $order->get_meta( '_mlb_location_id' ),
 			'items'           => $items,
-			'subtotal'        => self::money( $order->get_subtotal() ),
+			// Products only, without packaging.
+			'subtotal'        => self::money( array_sum( array_map( static fn ( array $item ): float => (float) $item['total'], $items ) ) ),
 			'shipping_total'  => self::money( (float) $order->get_shipping_total() + (float) $order->get_shipping_tax() ),
 			'discount_total'  => self::money( (float) $order->get_discount_total() + (float) $order->get_discount_tax() ),
 			'coupon_codes'    => array_values( $order->get_coupon_codes() ),
@@ -112,6 +114,7 @@ class Formatter {
 			'note'            => $order->meta_exists( '_mlb_note' ) ? (string) $order->get_meta( '_mlb_note' ) : $order->get_customer_note(),
 			'distance_km'     => $order->meta_exists( Delivery_Quote::DISTANCE_META ) ? (float) $order->get_meta( Delivery_Quote::DISTANCE_META ) : null,
 			// Courier's expected arrival with traffic, set when the order leaves the restaurant.
+			'extras'          => Packaging::order_extras( $order ),
 			'eta_at'          => (string) $order->get_meta( Delivery_Quote::ETA_META ) ?: null,
 		);
 	}

@@ -142,6 +142,21 @@ Cum funcționează:
 
 Când personalul pune comanda pe „În drum spre tine”, serverul cere la Google durata drumului cu traficul din acel moment. Clientul vede „Ajunge în jur de 19:42” în aplicație și „Ajunge în aproximativ 12 minute” în notificare.
 
+## Ambalaje și gratuități
+
+Ambalajul se plătește, iar pâinea și muștarul vin gratuit. Toate intră în comandă ca **produse WooCommerce**, pentru că plugin-ul GrandChef trimite doar produse; așa ajung la bucătărie și pe bon cu ID-ul lor GrandChef.
+
+Configurare:
+1. Creezi produse simple pentru **pachet** (sacoșă + cutie + cutie cartofi, 3,5 lei), **ambalaj platou** (10 lei), **pâine** și **muștar**. Fiecare are ID GrandChef și cotă TVA, iar vizibilitatea în catalog e „Ascuns”, ca să nu apară în meniu.
+2. În **WooCommerce › Setări aplicație › Ambalaje și gratuități** le alegi și setezi câte bucăți încap într-un pachet (10) și mărimea porției de muștar (20 ml).
+3. Pe fiecare produs din meniu, în editor: **Bucăți la ambalaj** (1 la un mic, o ceafă sau un cârnăcior; 0 la cartofi și sosuri), **Cutie** („mici” sau „ceafă”), **Platou**, **Pâine gratis (felii)** și **Muștar gratis (porții)**. Câtă vreme un produs are câmpurile goale sau pe 0, se deduc din nume: „mici” (1 bucată, cutia de mici, 1 felie, 1 porție), „cârnăciori” (cutia lor, 1 și 1), „ceafă” (cutia ei, 2 și 2), „platou” (ambalaj de platou); restul nu ocupă cutie. Pentru un produs cu „mici” în nume care nu primește nimic, scrie la Cutie „fara”. Editorul arată valorile deduse, iar „Actualizează” le salvează.
+
+Calcul: pentru fiecare cutie, bucățile se adună și se împart la capacitate, rotunjit în sus; micii și cefele nu stau în aceeași cutie (12 mici = 2 pachete, 8 mici + 4 cefe = 2 pachete). Fiecare platou are ambalajul lui. Opțional, orice comandă primește minim un pachet, iar la ridicare se poate scuti ambalajul. Ambalajul intră după cupoane, deci reducerile nu se aplică la el, iar pragul de livrare gratuită se uită doar la mâncare. Pâinea și muștarul intră la 0 lei, pe linii separate, iar produsele pot rămâne de vânzare în meniu la prețul lor; fără produse alese pentru ele, se scriu în observațiile comenzii trimise la GrandChef.
+
+Pe site, ambalajul și gratuitățile apar singure în coș, iar clientul nu le poate scoate sau modifica; sub rândul cu ambalajul apare „Din partea casei: …”, și în coșul nou (blocuri), și în cel clasic.
+
+Fără produsul pentru pachet ales în setări, nu se adaugă nimic (comportamentul de până acum).
+
 ## Notificări push
 
 Plugin-ul trimite notificările prin Expo Push Service (`https://exp.host/--/api/v2/push/send`), la toate telefoanele pe care clientul e logat (la comenzile fără cont, la telefonul care a plasat comanda). Tokenurile pe care Expo le raportează ca neînregistrate se șterg automat. Opțional, pentru securitate suplimentară activată în contul Expo:
@@ -189,4 +204,5 @@ php wordpress/mlb-app-api/tests/loyalty-rules-test.php
 php wordpress/mlb-app-api/tests/id-token-test.php
 php wordpress/mlb-app-api/tests/guest-orders-test.php
 php wordpress/mlb-app-api/tests/distance-pricing-test.php
+php wordpress/mlb-app-api/tests/packaging-rules-test.php
 ```

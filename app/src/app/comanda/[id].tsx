@@ -8,6 +8,7 @@ import { AppText, Button, Centered, LoadError } from '@/components/ui';
 import { colors, fonts, minTouchSize } from '@/constants/theme';
 import { etaLabel, formatKm } from '@/lib/delivery';
 import { formatPrice } from '@/lib/money';
+import { freebiesLabel, packagingLabel } from '@/lib/packaging';
 import { paymentLabel } from '@/lib/payment';
 import { formatTime, headline, timeline } from '@/lib/status';
 
@@ -34,6 +35,8 @@ export default function OrderStatusScreen() {
   const cancelled = data.status === 'cancelled';
   const reachedAt = new Map(data.status_history.map((h) => [h.status, h.at]));
   const eta = data.status === 'on_the_way' ? etaLabel(data.eta_at) : null;
+  const extras = data.extras;
+  const freebies = extras ? freebiesLabel(extras.bread, extras.mustard_ml) : null;
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -106,6 +109,19 @@ export default function OrderStatusScreen() {
               <AppText style={styles.itemText}>{formatPrice(item.total)}</AppText>
             </View>
           ))}
+          {extras && Number.parseFloat(extras.packaging_total) > 0 ? (
+            <View style={styles.itemRow}>
+              <AppText style={styles.itemText}>Ambalaj · {packagingLabel(extras.packs, extras.platters)}</AppText>
+              <AppText style={styles.itemText}>{formatPrice(extras.packaging_total)}</AppText>
+            </View>
+          ) : null}
+          {freebies ? (
+            <View style={styles.itemRow}>
+              <AppText variant="muted" style={{ flex: 1 }}>
+                Din partea casei: {freebies}
+              </AppText>
+            </View>
+          ) : null}
           {Number.parseFloat(data.shipping_total) > 0 ? (
             <View style={styles.itemRow}>
               <AppText style={styles.itemText}>Livrare{data.distance_km ? ` · ${formatKm(data.distance_km)}` : ''}</AppText>

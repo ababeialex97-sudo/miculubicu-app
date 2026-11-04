@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder, useDeliveryQuote } from '@/api/hooks';
+import { previewCart, useCartPreview, useConfig, useCreateGuestOrder, useCreateOrder, useDeliveryQuote, useMenu } from '@/api/hooks';
 import type { CartPreviewRequest, DeliveryQuote, DeliveryQuoteRequest, NewOrder } from '@/api/types';
 import { Icon } from '@/components/icon';
 import { AppText, Button, Centered, Field, Segmented } from '@/components/ui';
@@ -17,6 +17,7 @@ import { randomId } from '@/lib/id';
 import { registerForPush } from '@/lib/push';
 import { resolveLocation } from '@/lib/location';
 import { formatBani, toBani } from '@/lib/money';
+import { freebiesLabel, packagingLabel, packagingSummary } from '@/lib/packaging';
 import { paymentLabel } from '@/lib/payment';
 import { useCart } from '@/store/cart';
 import { useGuestOrders } from '@/store/guest-orders';
@@ -25,6 +26,7 @@ import { useSession } from '@/store/session';
 export default function CartScreen() {
   const cart = useCart();
   const config = useConfig();
+  const menu = useMenu();
   const customer = useSession((s) => s.customer);
   const createOrder = useCreateOrder();
   const createGuestOrder = useCreateGuestOrder();
@@ -89,7 +91,15 @@ export default function CartScreen() {
   const fromFee = lowestBandFee(location);
   const hasDiscount = cart.couponCodes.length > 0 && preview.data !== undefined && !preview.isError;
   const discount = hasDiscount ? toBani(preview.data!.discount) : 0;
-  const total = Math.max(0, subtotal - discount) + (shipping ?? 0);
+  // Packs and free bread/mustard, from each product's settings; the server counts them again.
+  const packaging = packagingSummary(
+    config.data?.packaging,
+    cart.lines.map((line) => ({ quantity: line.quantity, rules: menu.data?.products.find((p) => p.id === line.productId)?.packaging })),
+    cart.fulfillment,
+  );
+  const packagingBani = packaging?.totalBani ?? 0;
+  const freebies = packaging ? freebiesLabel(packaging.bread, packaging.mustardMl) : null;
+  const total = Math.max(0, subtotal - discount) + packagingBani + (shipping ?? 0);
 
   const applyCode = async () => {
     const codes = addCouponCode(cart.couponCodes, codeInput);
@@ -227,6 +237,18 @@ export default function CartScreen() {
           ))}
         </View>
 
+        {freebies ? (
+          <View style={styles.freebies}>
+            <Icon name="gift" size={20} color={colors.accent} />
+            <AppText style={{ flex: 1, fontSize: 14 }}>
+              <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
+                Din partea casei:{' '}
+              </AppText>
+              {freebies}
+            </AppText>
+          </View>
+        ) : null}
+
         {isDelivery && threshold > 0 ? (
           <View style={styles.card}>
             <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
@@ -360,6 +382,7 @@ export default function CartScreen() {
 
       <SafeAreaView edges={['bottom']} style={styles.footer}>
         <Row label="Produse" value={formatBani(subtotal)} />
+        {packaging && packagingBani > 0 ? <Row label={`Ambalaj · ${packagingLabel(packaging.packs, packaging.platters)}`} value={formatBani(packagingBani)} /> : null}
         {isDelivery ? <Row label="Livrare" value={shipping === null ? 'după adresă' : shipping === 0 ? 'Gratuit' : formatBani(shipping)} /> : null}
         {discount > 0 ? <Row label="Reducere" value={`−${formatBani(discount)}`} highlight /> : null}
         <View style={styles.totalRow}>
@@ -445,6 +468,7 @@ const styles = StyleSheet.create({
   guestLogin: { minHeight: minTouchSize, justifyContent: 'center' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
   change: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
+  freebies: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.accent },
   deliveryHint: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: colors.surface },
   payment: { minHeight: 48, borderRadius: 12, borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   codeRow: { flexDirection: 'row', gap: 8 },

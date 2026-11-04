@@ -17,6 +17,7 @@ use MLB\AppApi\Formatter;
 use MLB\AppApi\GrandChef_Diagnostics;
 use MLB\AppApi\Guest_Orders;
 use MLB\AppApi\Loyalty;
+use MLB\AppApi\Packaging;
 use MLB\AppApi\Settings;
 use MLB\AppApi\Statuses;
 
@@ -424,8 +425,17 @@ class Orders_Controller {
 			}
 		}
 
+		// Free delivery looks at the food only, so it is worked out before packaging goes on.
+		$food_subtotal = (float) $order->get_subtotal();
+
+		// Added after the coupons, so discounts never apply to packaging.
+		$packaging = Packaging::summary( $lines, $fulfillment );
+		if ( $packaging ) {
+			Packaging::add_to_order( $order, $packaging );
+		}
+
 		$base_fee = $quote ? $quote['fee'] : null;
-		$order->add_item( $this->shipping_item( $method, $quote ? self::delivery_cost( $location, (float) $order->get_subtotal(), $base_fee ) : 0.0 ) );
+		$order->add_item( $this->shipping_item( $method, $quote ? self::delivery_cost( $location, $food_subtotal, $base_fee ) : 0.0 ) );
 		$order->calculate_totals();
 		$order->save();
 
@@ -470,6 +480,7 @@ class Orders_Controller {
 			$product      = wc_get_product( $variation_id > 0 ? $variation_id : $product_id );
 
 			$valid = $product
+				&& ! Packaging::is_extra_product( $product->get_id() )
 				&& 'publish' === get_post_status( $product_id )
 				&& ( $variation_id > 0
 					? $product instanceof \WC_Product_Variation && $product->get_parent_id() === $product_id
